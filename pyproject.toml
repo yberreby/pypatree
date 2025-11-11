@@ -9,6 +9,8 @@ dependencies = [
     "tyro>=0.9.35",
 ]
 
+[project.scripts]
+pypatree = "pypatree.__main__:main"
 
 [build-system]
 requires = ["hatchling"]
