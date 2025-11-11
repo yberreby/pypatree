@@ -1,0 +1,15 @@
+[project]
+name = "pypatree"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "setuptools>=80.9.0",
+    "tyro>=0.9.35",
+]
+
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
