@@ -1,6 +1,7 @@
 [project]
 name = "pypatree"
 version = "0.1.0"
+license = "MIT"
 description = "Pretty-print a project's module tree"
 readme = "README.md"
 requires-python = ">=3.8"
