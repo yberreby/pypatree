@@ -3,12 +3,12 @@
 import importlib
 import inspect
 import pkgutil
-from typing import Any
+from typing import Any, Dict, List
 
 from setuptools import find_packages
 
 
-def get_packages(skip_tests: bool = True) -> dict[str, list[str]]:
+def get_packages(skip_tests: bool = True) -> Dict[str, List[str]]:
     """Get all packages and their submodules using setuptools + pkgutil."""
     top_level_packages = [pkg for pkg in find_packages() if "." not in pkg]
 
@@ -32,7 +32,7 @@ def get_packages(skip_tests: bool = True) -> dict[str, list[str]]:
     return grouped
 
 
-def get_module_items(modname: str, skip_tests: bool = True) -> list[str]:
+def get_module_items(modname: str, skip_tests: bool = True) -> List[str]:
     """Extract public functions and classes from a module."""
     items = []
     try:
@@ -54,7 +54,9 @@ def get_module_items(modname: str, skip_tests: bool = True) -> list[str]:
     return sorted(items)
 
 
-def build_tree(submods: list[str], pkg_name: str, skip_tests: bool = True) -> dict[str, Any]:
+def build_tree(
+    submods: List[str], pkg_name: str, skip_tests: bool = True
+) -> Dict[str, Any]:
     """Build nested tree structure from flat module list."""
     tree = {}
     for modname in sorted(submods):

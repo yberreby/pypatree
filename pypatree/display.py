@@ -1,7 +1,7 @@
-from typing import Any
+from typing import Any, Dict
 
 
-def render_tree(tree: dict[str, Any], prefix: str = "") -> None:
+def render_tree(tree: Dict[str, Any], prefix: str = "") -> None:
     """Recursively render tree structure with box-drawing characters."""
     # Render root-level items first
     root_items = tree.get("__items__", [])
