@@ -4,7 +4,7 @@ from . import build_tree, get_packages
 from .display import render_tree
 
 
-def main(skip_tests: bool = True):
+def run(skip_tests: bool = True):
     """Display module tree with public functions/classes.
 
     Args:
@@ -20,5 +20,10 @@ def main(skip_tests: bool = True):
         render_tree(tree)
 
 
+def main():
+    """Entry point for CLI."""
+    tyro.cli(run)
+
+
 if __name__ == "__main__":
-    tyro.cli(main)
+    main()
