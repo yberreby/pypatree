@@ -24,7 +24,6 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "setuptools>=75.3.2",
     "tyro>=0.9.35",
 ]
 
@@ -47,7 +46,13 @@ dev = [
     "pytest-cov>=5.0.0",
     "ruff>=0.14.4",
     "rust-just>=1.43.1",
+    "testpkg",
+    "brokenpkg",
 ]
+
+[tool.uv.sources]
+testpkg = {path = "tests/stubs/testpkg", editable = true}
+brokenpkg = {path = "tests/stubs/brokenpkg", editable = true}
 
 [tool.pytest.ini_options]
 testpaths = ["pypatree", "tests"]
@@ -61,11 +66,11 @@ omit = ["pypatree/__main__.py"]
 exclude_lines = ["if __name__"]
 
 [tool.ruff]
-exclude = ["tests/fixtures"]
+exclude = ["tests/stubs"]
 
 [tool.basedpyright]
 typeCheckingMode = "standard"
-exclude = [".venv", "tests/fixtures"]
+exclude = [".venv", "tests/stubs"]
 reportAny = false
 reportExplicitAny = false
 reportUnknownMemberType = false

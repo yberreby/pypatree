@@ -1,34 +1,27 @@
-from pathlib import Path
+"""Integration tests using real stub packages."""
+
+import logging
 
 from pypatree.__main__ import run
 
-FIXTURES = Path(__file__).parent / "fixtures"
 
-
-def test_broken_package_skipped(monkeypatch, caplog, capsys) -> None:
-    fixture = FIXTURES / "broken_pkg"
-    monkeypatch.chdir(fixture)
-    monkeypatch.syspath_prepend(str(fixture))
-    run()
-    assert "broken" not in capsys.readouterr().out
-    assert "Skipping" in caplog.text
-
-
-def test_test_prefixed_skipped_by_default(monkeypatch, capsys) -> None:
-    fixture = FIXTURES / "test_prefixed"
-    monkeypatch.chdir(fixture)
-    monkeypatch.syspath_prepend(str(fixture))
-    run(skip_tests=True)
-    out = capsys.readouterr().out
-    assert "testpkg" not in out
-    assert "realpkg" in out
-
-
-def test_test_prefixed_included_when_requested(monkeypatch, capsys) -> None:
-    fixture = FIXTURES / "test_prefixed"
-    monkeypatch.chdir(fixture)
-    monkeypatch.syspath_prepend(str(fixture))
+def test_finds_testpkg_when_skip_tests_false(capsys) -> None:
+    """testpkg is found when skip_tests=False."""
     run(skip_tests=False)
     out = capsys.readouterr().out
     assert "testpkg" in out
-    assert "realpkg" in out
+
+
+def test_skips_testpkg_by_default(capsys) -> None:
+    """testpkg is skipped when skip_tests=True (starts with 'test')."""
+    run(skip_tests=True)
+    out = capsys.readouterr().out
+    assert "testpkg" not in out
+
+
+def test_broken_package_skipped(caplog, capsys) -> None:
+    """brokenpkg (which fails to import) is logged and skipped."""
+    with caplog.at_level(logging.WARNING):
+        run(skip_tests=False)
+    assert "brokenpkg" not in capsys.readouterr().out
+    assert "Skipping" in caplog.text

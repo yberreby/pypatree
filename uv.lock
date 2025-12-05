@@ -19,6 +19,11 @@ wheels = [
 ]
 
 [[package]]
+name = "brokenpkg"
+version = "0.1.0"
+source = { editable = "tests/stubs/brokenpkg" }
+
+[[package]]
 name = "cfgv"
 version = "3.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -543,13 +548,13 @@ name = "pypatree"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "setuptools" },
     { name = "tyro" },
 ]
 
 [package.dev-dependencies]
 dev = [
     { name = "basedpyright" },
+    { name = "brokenpkg" },
     { name = "pre-commit", version = "4.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "pre-commit", version = "4.5.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "pytest", version = "8.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
@@ -557,22 +562,22 @@ dev = [
     { name = "pytest-cov" },
     { name = "ruff" },
     { name = "rust-just" },
+    { name = "testpkg" },
 ]
 
 [package.metadata]
-requires-dist = [
-    { name = "setuptools", specifier = ">=75.3.2" },
-    { name = "tyro", specifier = ">=0.9.35" },
-]
+requires-dist = [{ name = "tyro", specifier = ">=0.9.35" }]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "basedpyright", specifier = ">=1.35.0" },
+    { name = "brokenpkg", editable = "tests/stubs/brokenpkg" },
     { name = "pre-commit", specifier = ">=3.5.0" },
     { name = "pytest", specifier = ">=8.3.5" },
     { name = "pytest-cov", specifier = ">=5.0.0" },
     { name = "ruff", specifier = ">=0.14.4" },
     { name = "rust-just", specifier = ">=1.43.1" },
+    { name = "testpkg", editable = "tests/stubs/testpkg" },
 ]
 
 [[package]]
@@ -769,15 +774,6 @@ wheels = [
 ]
 
 [[package]]
-name = "setuptools"
-version = "80.9.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/18/5d/3bf57dcd21979b887f014ea83c24ae194cfcd12b9e0fda66b957c69d1fca/setuptools-80.9.0.tar.gz", hash = "sha256:f36b47402ecde768dbfafc46e8e4207b4360c654f1f3bb84475f0a28628fb19c", size = 1319958, upload-time = "2025-05-27T00:56:51.443Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/a3/dc/17031897dae0efacfea57dfd3a82fdd2a2aeb58e0ff71b77b87e44edc772/setuptools-80.9.0-py3-none-any.whl", hash = "sha256:062d34222ad13e0cc312a4c02d73f059e86a4acbfbdea8f8f76b28c99f306922", size = 1201486, upload-time = "2025-05-27T00:56:49.664Z" },
-]
-
-[[package]]
 name = "shtab"
 version = "1.7.2"
 source = { registry = "https://pypi.org/simple" }
@@ -785,6 +781,11 @@ sdist = { url = "https://files.pythonhosted.org/packages/5a/3e/837067b970c1d2ffa
 wheels = [
     { url = "https://files.pythonhosted.org/packages/74/03/3271b7bb470fbab4adf5bd30b0d32143909d96f3608d815b447357f47f2b/shtab-1.7.2-py3-none-any.whl", hash = "sha256:858a5805f6c137bb0cda4f282d27d08fd44ca487ab4a6a36d2a400263cd0b5c1", size = 14214, upload-time = "2025-04-12T20:28:01.82Z" },
 ]
+
+[[package]]
+name = "testpkg"
+version = "0.1.0"
+source = { editable = "tests/stubs/testpkg" }
 
 [[package]]
 name = "tomli"
