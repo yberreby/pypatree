@@ -1,5 +1,8 @@
-# Run all checks
+# Local dev (includes dogfood)
 default: check dogfood smoke
+
+# CI pipeline
+ci: check smoke readme
 
 # Run pypatree on itself
 dogfood:

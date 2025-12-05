@@ -19,16 +19,7 @@ jobs:
         with:
           enable-cache: true
 
-      - run: uv run ruff check --fix
-      - run: uv run ruff format
-      - run: uv run basedpyright
-      - run: uv run pytest --cov=pypatree --cov-report=term-missing --cov-fail-under=100
-
-      - name: Smoke test on real projects
-        run: uv run python scripts/smoke_test.py
-
-      - name: Update README if needed
-        run: uv run python scripts/update_readme.py
+      - run: uv run just ci
 
       - name: Commit README if changed
         if: github.event_name == 'push'
