@@ -1,7 +1,7 @@
 [project]
 name = "pypatree"
 version = "0.1.0"
-license = "MIT"
+license = {text = "MIT"}
 authors = [
   {name = "Yohaï-Eliel Berreby", email = "me@yberreby.com"},
 ]
