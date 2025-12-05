@@ -1,6 +1,15 @@
 default: check
 
-check: lint typecheck test
+setup:
+    uv run pre-commit install --hook-type pre-push
+
+check: lint typecheck test readme-check
+
+readme:
+    uv run python scripts/update_readme.py
+
+readme-check:
+    uv run python scripts/update_readme.py --check
 
 lint:
     uv run ruff check --fix
