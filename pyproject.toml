@@ -24,6 +24,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
+    "rich>=14.2.0",
     "tyro>=0.9.35",
 ]
 

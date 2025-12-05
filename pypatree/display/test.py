@@ -1,4 +1,6 @@
-from . import print_tree, render_tree
+from pypatree.config import Config, DocstringMode
+
+from . import _highlight, print_tree, render_tree
 
 
 def test_empty_tree() -> None:
@@ -26,7 +28,8 @@ def test_deep_nested() -> None:
 
 
 def test_print_tree(capsys) -> None:  # type: ignore[no-untyped-def]
-    print_tree({"__items__": ["x()"]})
+    cfg = Config(docstrings=DocstringMode.none)
+    print_tree("testpkg", {"__items__": ["x()"]}, cfg)
     out = capsys.readouterr().out
     assert "x()" in out
 
@@ -45,3 +48,17 @@ def test_items_not_duplicated_with_nested_children() -> None:
     assert (
         lines.count("    ├── child_item()") + lines.count("    └── child_item()") == 1
     )
+
+
+def test_highlight_preserves_signature() -> None:
+    """_highlight wraps in 'def' for syntax coloring but returns original signature."""
+    cases = [
+        "foo()",
+        "foo(x: int)",
+        "foo(x: int) -> None",
+        "foo(a: str, b: int = 1) -> bool",
+        "MyClass(name: str) -> None",
+    ]
+    for sig in cases:
+        result = _highlight(sig)
+        assert result.plain == sig, f"Expected {sig!r}, got {result.plain!r}"

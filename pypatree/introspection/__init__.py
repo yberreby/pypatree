@@ -2,7 +2,7 @@ import importlib
 import inspect
 import logging
 import re
-from typing import Callable, Union
+from typing import Callable, Optional, Union
 
 log = logging.getLogger(__name__)
 
@@ -22,6 +22,20 @@ def format_signature(obj: Union[Callable, type]) -> str:
     except (ValueError, TypeError):
         return f"{name}()"
     return _OBJECT_ADDR_RE.sub(">", f"{name}{sig}")
+
+
+def get_module_docstring(modname: str, short: bool = True) -> Optional[str]:
+    """Get a module's docstring, optionally just the first line."""
+    try:
+        mod = importlib.import_module(modname)
+    except ImportError:
+        return None
+    doc = mod.__doc__
+    if not doc:
+        return None
+    if short:
+        return doc.strip().split("\n")[0]
+    return doc.strip()
 
 
 def get_module_items(modname: str, skip_tests: bool = True) -> list[str]:

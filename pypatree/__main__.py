@@ -1,16 +1,17 @@
 import tyro
 
-from . import build_tree, get_packages
+from .config import Config
+from .discovery import get_packages
 from .display import print_tree
+from .tree import build_tree
 
 
-def run(skip_tests: bool = True) -> None:
+def run(cfg: Config) -> None:
     """Display module tree with public functions/classes."""
-    for pkg_name, submods in sorted(get_packages(skip_tests=skip_tests).items()):
+    for pkg_name, submods in sorted(get_packages(skip_tests=cfg.skip_tests).items()):
         if not submods:
             continue
-        print(pkg_name)
-        print_tree(build_tree(submods, pkg_name, skip_tests=skip_tests))
+        print_tree(pkg_name, build_tree(submods, pkg_name, cfg.skip_tests), cfg)
 
 
 def main() -> None:

@@ -701,6 +701,7 @@ name = "pypatree"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "rich" },
     { name = "tyro" },
 ]
 
@@ -720,7 +721,10 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "tyro", specifier = ">=0.9.35" }]
+requires-dist = [
+    { name = "rich", specifier = ">=14.2.0" },
+    { name = "tyro", specifier = ">=0.9.35" },
+]
 
 [package.metadata.requires-dev]
 dev = [
