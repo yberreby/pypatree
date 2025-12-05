@@ -3,7 +3,7 @@
 [![CI](https://github.com/yberreby/pypatree/actions/workflows/ci.yml/badge.svg)](https://github.com/yberreby/pypatree/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/pypatree)](https://pypi.org/project/pypatree/)
 [![Python](https://img.shields.io/pypi/pyversions/pypatree)](https://pypi.org/project/pypatree/)
-[![License](https://img.shields.io/pypi/l/pypatree)](https://github.com/yberreby/pypatree/blob/main/LICENSE)
+[![License](https://img.shields.io/pypi/l/pypatree?v=2)](https://github.com/yberreby/pypatree/blob/main/LICENSE)
 
 Pretty-print a project's module tree.
 
