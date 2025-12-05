@@ -1,4 +1,8 @@
-default: check
+default: check dogfood
+
+dogfood:
+    # Let's print our own tree!
+    uv run pypatree
 
 setup:
     uv run pre-commit install --hook-type pre-push

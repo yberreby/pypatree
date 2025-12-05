@@ -20,14 +20,13 @@ def test_get_packages_includes_tests_when_requested() -> None:
 
 
 def test_get_module_items_functions() -> None:
-    items = get_module_items("pypatree")
-    assert "get_packages()" in items
-    assert "build_tree()" in items
+    items = get_module_items("pypatree.discovery")
+    assert any("get_packages" in i for i in items)
 
 
 def test_get_module_items_classes() -> None:
     items = get_module_items("logging")
-    assert "Logger" in items
+    assert any("Logger(" in i for i in items)
 
 
 def test_build_tree_flat() -> None:

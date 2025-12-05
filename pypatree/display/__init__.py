@@ -1,8 +1,4 @@
-from __future__ import annotations
-
-from typing import Any, Dict
-
-Tree = Dict[str, Any]
+from pypatree.tree import Tree
 
 
 def render_tree(tree: Tree, prefix: str = "") -> list[str]:
