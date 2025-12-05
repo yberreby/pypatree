@@ -17,3 +17,13 @@ Architecture: `uv run pypatree` (dogfood). Each module = dir with `__init__.py` 
 We have GitHub Actions, see @.github/workflows
 
 No matter what, the command `uv run just` is always good to run to ensure the repo is in a good state.
+
+## Coding practices
+
+Do not allow ugliness to creep in.
+
+Code should be minimal, modular, orthogonal, easy to understand, maintain, and extend.
+
+Tests should be useful. Do not write tests that duplicate implementation details and are exceedingly-tightly coupled (e.g. checking that a default value is what we set: BAD).
+
+Do not abuse mocking.

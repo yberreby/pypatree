@@ -15,7 +15,8 @@ def run(cfg: Config) -> None:
 
 
 def main() -> None:
-    tyro.cli(run)
+    cfg = tyro.cli(Config, description="Display module tree with public functions/classes.")
+    run(cfg)
 
 
 if __name__ == "__main__":
