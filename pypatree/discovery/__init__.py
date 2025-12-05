@@ -4,6 +4,8 @@ import json
 import logging
 import os
 import pkgutil
+import re
+from typing import Optional
 
 log = logging.getLogger(__name__)
 
@@ -31,24 +33,33 @@ def _get_local_packages() -> list[str]:
     return packages
 
 
-def get_packages(skip_tests: bool = True) -> dict[str, list[str]]:
+def _matches_exclude(name: str, pattern: Optional[re.Pattern[str]]) -> bool:
+    """Check if any segment of a dotted name matches the exclude pattern."""
+    if pattern is None:
+        return False
+    return any(pattern.search(seg) for seg in name.split("."))
+
+
+def get_packages(exclude: Optional[str] = None) -> dict[str, list[str]]:
     """Find importable packages in CWD and their submodules."""
+    pattern = re.compile(exclude) if exclude else None
     result: dict[str, list[str]] = {}
 
     for pkg_name in _get_local_packages():
-        if skip_tests and pkg_name.startswith("test"):
-            log.debug("Skipping test package: %s", pkg_name)
+        if _matches_exclude(pkg_name, pattern):
+            log.info("Excluding package: %s", pkg_name)
             continue
         try:
             pkg = importlib.import_module(pkg_name)
         except ImportError as e:
-            log.warning("Skipping %r: %s", pkg_name, e)
+            log.warning("Skipping %r (import failed): %s", pkg_name, e)
             continue
 
         log.debug("Walking package: %s", pkg_name)
         submods = [pkg_name]
         for _, modname, _ in pkgutil.walk_packages(pkg.__path__, f"{pkg_name}."):
-            if skip_tests and ".test" in modname:
+            if _matches_exclude(modname, pattern):
+                log.debug("Excluding module: %s", modname)
                 continue
             submods.append(modname)
 

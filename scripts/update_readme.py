@@ -16,6 +16,15 @@ SHOWCASE_REPO = "https://github.com/encode/httpx.git"
 def generate() -> str:
     template = TEMPLATE.read_text()
 
+    # Help output
+    help_output = subprocess.run(
+        ["uv", "run", "pypatree", "--help"],
+        capture_output=True,
+        text=True,
+        cwd=ROOT,
+    ).stdout.strip()
+    template = template.replace("{{HELP_OUTPUT}}", help_output)
+
     # Self output
     self_output = subprocess.run(
         ["uv", "run", "pypatree"],

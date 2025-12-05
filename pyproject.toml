@@ -47,13 +47,13 @@ dev = [
     "pytest-cov>=5.0.0",
     "ruff>=0.14.4",
     "rust-just>=1.43.1",
-    "testpkg",
+    "test_stub",
     "brokenpkg",
     "mypy>=1.19.0",
 ]
 
 [tool.uv.sources]
-testpkg = {path = "tests/stubs/testpkg", editable = true}
+test_stub = {path = "tests/stubs/test_stub", editable = true}
 brokenpkg = {path = "tests/stubs/brokenpkg", editable = true}
 
 [tool.pytest.ini_options]

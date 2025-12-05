@@ -38,8 +38,9 @@ def get_module_docstring(modname: str, short: bool = True) -> Optional[str]:
     return doc.strip()
 
 
-def get_module_items(modname: str, skip_tests: bool = True) -> list[str]:
+def get_module_items(modname: str, exclude: Optional[str] = None) -> list[str]:
     """Extract public functions and classes with signatures from a module."""
+    pattern = re.compile(exclude) if exclude else None
     try:
         mod = importlib.import_module(modname)
     except ImportError as e:
@@ -50,7 +51,7 @@ def get_module_items(modname: str, skip_tests: bool = True) -> list[str]:
     for name in dir(mod):
         if name.startswith("_"):
             continue
-        if skip_tests and name.startswith("test"):
+        if pattern and pattern.search(name):
             continue
         obj = getattr(mod, name)
         if getattr(obj, "__module__", None) != modname:

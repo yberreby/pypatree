@@ -717,7 +717,7 @@ dev = [
     { name = "pytest-cov" },
     { name = "ruff" },
     { name = "rust-just" },
-    { name = "testpkg" },
+    { name = "test-stub" },
 ]
 
 [package.metadata]
@@ -736,7 +736,7 @@ dev = [
     { name = "pytest-cov", specifier = ">=5.0.0" },
     { name = "ruff", specifier = ">=0.14.4" },
     { name = "rust-just", specifier = ">=1.43.1" },
-    { name = "testpkg", editable = "tests/stubs/testpkg" },
+    { name = "test-stub", editable = "tests/stubs/test_stub" },
 ]
 
 [[package]]
@@ -942,9 +942,9 @@ wheels = [
 ]
 
 [[package]]
-name = "testpkg"
+name = "test-stub"
 version = "0.1.0"
-source = { editable = "tests/stubs/testpkg" }
+source = { editable = "tests/stubs/test_stub" }
 
 [[package]]
 name = "tomli"

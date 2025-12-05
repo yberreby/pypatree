@@ -5,16 +5,20 @@
 [![Python](https://img.shields.io/pypi/pyversions/pypatree)](https://pypi.org/project/pypatree/)
 [![License](https://img.shields.io/pypi/l/pypatree?v=2)](https://github.com/yberreby/pypatree/blob/main/LICENSE)
 
-Pretty-print a project's module tree.
+Pretty-print a project's module tree with syntax-highlighted signatures.
 
 ```bash
 uv add --dev pypatree
 uv run pypatree
 ```
 
-Example output on this very repo:
 ```
 {{PYPATREE_OUTPUT}}
+```
+
+Run `pypatree --help` for options:
+```
+{{HELP_OUTPUT}}
 ```
 
 Example on [{{SHOWCASE_NAME}}]({{SHOWCASE_URL}}):

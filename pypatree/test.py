@@ -1,22 +1,24 @@
+from pypatree.config import DEFAULT_EXCLUDE
+
 from . import build_tree, get_module_items, get_packages
 
 
 def test_get_packages_finds_pypatree() -> None:
-    pkgs = get_packages()
+    pkgs = get_packages(exclude=DEFAULT_EXCLUDE)
     assert "pypatree" in pkgs
     assert "pypatree.display" in pkgs["pypatree"]
 
 
-def test_get_packages_skips_tests_by_default() -> None:
-    pkgs = get_packages()
+def test_get_packages_excludes_tests_by_default() -> None:
+    pkgs = get_packages(exclude=DEFAULT_EXCLUDE)
     submods = pkgs["pypatree"]
-    assert not any(".test" in m for m in submods)
+    assert "pypatree.discovery.test" not in submods
 
 
-def test_get_packages_includes_tests_when_requested() -> None:
-    pkgs = get_packages(skip_tests=False)
+def test_get_packages_includes_tests_when_no_exclude() -> None:
+    pkgs = get_packages(exclude=None)
     submods = pkgs["pypatree"]
-    assert any(".test" in m for m in submods)
+    assert "pypatree.discovery.test" in submods
 
 
 def test_get_module_items_functions() -> None:
@@ -30,12 +32,12 @@ def test_get_module_items_classes() -> None:
 
 
 def test_build_tree_flat() -> None:
-    tree = build_tree(["pkg", "pkg.a", "pkg.b"], "pkg", skip_tests=False)
+    tree = build_tree(["pkg", "pkg.a", "pkg.b"], "pkg", exclude=None)
     assert "a" in tree
     assert "b" in tree
 
 
 def test_build_tree_nested() -> None:
-    tree = build_tree(["pkg", "pkg.sub.deep"], "pkg", skip_tests=False)
+    tree = build_tree(["pkg", "pkg.sub.deep"], "pkg", exclude=None)
     assert "sub" in tree
     assert "deep" in tree["sub"]

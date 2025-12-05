@@ -8,10 +8,10 @@ from .tree import build_tree
 
 def run(cfg: Config) -> None:
     """Display module tree with public functions/classes."""
-    for pkg_name, submods in sorted(get_packages(skip_tests=cfg.skip_tests).items()):
+    for pkg_name, submods in sorted(get_packages(exclude=cfg.exclude).items()):
         if not submods:
             continue
-        print_tree(pkg_name, build_tree(submods, pkg_name, cfg.skip_tests), cfg)
+        print_tree(pkg_name, build_tree(submods, pkg_name, cfg.exclude), cfg)
 
 
 def main() -> None:

@@ -28,8 +28,10 @@ def test_get_module_items_import_error() -> None:
     assert items == []
 
 
-def test_get_module_items_skips_test_functions() -> None:
-    items = get_module_items("pypatree.introspection.test", skip_tests=True)
+def test_get_module_items_excludes_test_functions() -> None:
+    from pypatree.config import DEFAULT_EXCLUDE
+
+    items = get_module_items("pypatree.introspection.test", exclude=DEFAULT_EXCLUDE)
     assert not any("test_" in i for i in items)
 
 
