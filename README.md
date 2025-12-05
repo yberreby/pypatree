@@ -77,7 +77,7 @@ httpx
 ├── StreamConsumed() -> 'None'
 ├── StreamError(message: 'str') -> 'None'
 ├── SyncByteStream(*args, **kwargs)
-├── Timeout(timeout: 'TimeoutTypes | UnsetType' = <httpx._config.UnsetType object at 0x10121d460>, *, connect: 'None | float | UnsetType' = <httpx._config.UnsetType object at 0x10121d460>, read: 'None | float | UnsetType' = <httpx._config.UnsetType object at 0x10121d460>, write: 'None | float | UnsetType' = <httpx._config.UnsetType object at 0x10121d460>, pool: 'None | float | UnsetType' = <httpx._config.UnsetType object at 0x10121d460>) -> 'None'
+├── Timeout(timeout: 'TimeoutTypes | UnsetType' = <httpx._config.UnsetType object at 0x7f26b3e7fc10>, *, connect: 'None | float | UnsetType' = <httpx._config.UnsetType object at 0x7f26b3e7fc10>, read: 'None | float | UnsetType' = <httpx._config.UnsetType object at 0x7f26b3e7fc10>, write: 'None | float | UnsetType' = <httpx._config.UnsetType object at 0x7f26b3e7fc10>, pool: 'None | float | UnsetType' = <httpx._config.UnsetType object at 0x7f26b3e7fc10>) -> 'None'
 ├── TimeoutException(message: 'str', *, request: 'Request | None' = None) -> 'None'
 ├── TooManyRedirects(message: 'str', *, request: 'Request | None' = None) -> 'None'
 ├── TransportError(message: 'str', *, request: 'Request | None' = None) -> 'None'
@@ -86,7 +86,7 @@ httpx
 ├── WSGITransport(app: 'WSGIApplication', raise_app_exceptions: 'bool' = True, script_name: 'str' = '', remote_addr: 'str' = '127.0.0.1', wsgi_errors: 'typing.TextIO | None' = None) -> 'None'
 ├── WriteError(message: 'str', *, request: 'Request | None' = None) -> 'None'
 ├── WriteTimeout(message: 'str', *, request: 'Request | None' = None) -> 'None'
-├── codes(*args, **kwds)
+├── codes(*args, **kwargs)
 ├── create_ssl_context(verify: 'ssl.SSLContext | str | bool' = True, cert: 'CertTypes | None' = None, trust_env: 'bool' = True) -> 'ssl.SSLContext'
 ├── delete(url: 'URL | str', *, params: 'QueryParamTypes | None' = None, headers: 'HeaderTypes | None' = None, cookies: 'CookieTypes | None' = None, auth: 'AuthTypes | None' = None, proxy: 'ProxyTypes | None' = None, follow_redirects: 'bool' = False, timeout: 'TimeoutTypes' = Timeout(timeout=5.0), verify: 'ssl.SSLContext | str | bool' = True, trust_env: 'bool' = True) -> 'Response'
 ├── get(url: 'URL | str', *, params: 'QueryParamTypes | None' = None, headers: 'HeaderTypes | None' = None, cookies: 'CookieTypes | None' = None, auth: 'AuthTypes | None' = None, proxy: 'ProxyTypes | None' = None, follow_redirects: 'bool' = False, verify: 'ssl.SSLContext | str | bool' = True, timeout: 'TimeoutTypes' = Timeout(timeout=5.0), trust_env: 'bool' = True) -> 'Response'
@@ -106,7 +106,7 @@ httpx
 │   ├── BaseClient(*, auth: 'AuthTypes | None' = None, params: 'QueryParamTypes | None' = None, headers: 'HeaderTypes | None' = None, cookies: 'CookieTypes | None' = None, timeout: 'TimeoutTypes' = Timeout(timeout=5.0), follow_redirects: 'bool' = False, max_redirects: 'int' = 20, event_hooks: 'None | typing.Mapping[str, list[EventHook]]' = None, base_url: 'URL | str' = '', trust_env: 'bool' = True, default_encoding: 'str | typing.Callable[[bytes], str]' = 'utf-8') -> 'None'
 │   ├── BoundAsyncStream(stream: 'AsyncByteStream', response: 'Response', start: 'float') -> 'None'
 │   ├── BoundSyncStream(stream: 'SyncByteStream', response: 'Response', start: 'float') -> 'None'
-│   ├── ClientState(*args, **kwds)
+│   ├── ClientState(*args, **kwargs)
 │   └── UseClientDefault(*args, **kwargs)
 ├── _config
 │   └── UnsetType(*args, **kwargs)
