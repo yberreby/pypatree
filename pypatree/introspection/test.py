@@ -31,3 +31,15 @@ def test_get_module_items_import_error() -> None:
 def test_get_module_items_skips_test_functions() -> None:
     items = get_module_items("pypatree.introspection.test", skip_tests=True)
     assert not any("test_" in i for i in items)
+
+
+def test_format_signature_strips_memory_addresses() -> None:
+    sentinel = object()
+
+    def fn(x: object = sentinel) -> None:
+        assert x is sentinel
+
+    fn()
+    sig = format_signature(fn)
+    assert "0x" not in sig
+    assert "object>" in sig

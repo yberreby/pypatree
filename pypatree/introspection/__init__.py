@@ -1,9 +1,12 @@
 import importlib
 import inspect
 import logging
+import re
 from typing import Callable, Union
 
 log = logging.getLogger(__name__)
+
+_OBJECT_ADDR_RE = re.compile(r" at 0x[0-9a-fA-F]+>")
 
 
 def format_signature(obj: Union[Callable, type]) -> str:
@@ -18,7 +21,7 @@ def format_signature(obj: Union[Callable, type]) -> str:
             sig = inspect.signature(obj)
     except (ValueError, TypeError):
         return f"{name}()"
-    return f"{name}{sig}"
+    return _OBJECT_ADDR_RE.sub(">", f"{name}{sig}")
 
 
 def get_module_items(modname: str, skip_tests: bool = True) -> list[str]:
