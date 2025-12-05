@@ -10,7 +10,6 @@ from pathlib import Path
 REPOS = [
     "https://github.com/encode/httpx.git",
     "https://github.com/Textualize/rich.git",
-    "https://github.com/pydantic/pydantic-settings.git",
     "https://github.com/brentyi/tyro.git",
 ]
 
@@ -33,9 +32,9 @@ def main() -> int:
 
             print(f"=== {name} ===")
             run("git", "clone", "--depth=1", "-q", repo, dest)
-            result = run(
-                "uv", "run", "--with", PYPATREE, "pypatree", cwd=dest, timeout=120
-            )
+            run("uv", "venv", cwd=dest)
+            run("uv", "pip", "install", "-e", ".", PYPATREE, cwd=dest, timeout=120)
+            result = run("uv", "run", "pypatree", cwd=dest, timeout=120)
 
             if result.returncode != 0:
                 print(f"FAIL\n{result.stderr.decode()}")
