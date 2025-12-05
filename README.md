@@ -177,7 +177,7 @@ httpx
 │   'typing.TextIO | None' = None) -> 'None'
 ├── WriteError(message: 'str', *, request: 'Request | None' = None) -> 'None'
 ├── WriteTimeout(message: 'str', *, request: 'Request | None' = None) -> 'None'
-├── codes(*args, **kwds)
+├── codes(*args, **kwargs)
 ├── create_ssl_context(verify: 'ssl.SSLContext | str | bool' = True, cert: 
 │   'CertTypes | None' = None, trust_env: 'bool' = True) -> 'ssl.SSLContext'
 ├── delete(url: 'URL | str', *, params: 'QueryParamTypes | None' = None, 
@@ -262,7 +262,7 @@ httpx
 │   │   'float') -> 'None'
 │   ├── BoundSyncStream(stream: 'SyncByteStream', response: 'Response', start: 
 │   │   'float') -> 'None'
-│   ├── ClientState(*args, **kwds)
+│   ├── ClientState(*args, **kwargs)
 │   └── UseClientDefault(*args, **kwargs)
 ├── _config
 │   └── UnsetType(*args, **kwargs)
