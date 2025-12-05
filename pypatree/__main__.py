@@ -1,27 +1,19 @@
 import tyro
 
 from . import build_tree, get_packages
-from .display import render_tree
+from .display import print_tree
 
 
-def run(skip_tests: bool = True):
-    """Display module tree with public functions/classes.
-
-    Args:
-        skip_tests: Skip test modules and test functions. Default: True.
-    """
-    grouped_packages = get_packages(skip_tests=skip_tests)
-    for pkg_name, submods in sorted(grouped_packages.items()):
+def run(skip_tests: bool = True) -> None:
+    """Display module tree with public functions/classes."""
+    for pkg_name, submods in sorted(get_packages(skip_tests=skip_tests).items()):
         if not submods:
             continue
-
         print(pkg_name)
-        tree = build_tree(submods, pkg_name, skip_tests=skip_tests)
-        render_tree(tree)
+        print_tree(build_tree(submods, pkg_name, skip_tests=skip_tests))
 
 
-def main():
-    """Entry point for CLI."""
+def main() -> None:
     tyro.cli(run)
 
 

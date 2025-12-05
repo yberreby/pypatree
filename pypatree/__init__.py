@@ -1,77 +1,82 @@
-"""Display module tree with public functions/classes."""
+from __future__ import annotations
 
 import importlib
 import inspect
+import logging
 import pkgutil
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 from setuptools import find_packages
 
+log = logging.getLogger(__name__)
 
-def get_packages(skip_tests: bool = True) -> Dict[str, List[str]]:
-    """Get all packages and their submodules using setuptools + pkgutil."""
-    top_level_packages = [pkg for pkg in find_packages() if "." not in pkg]
+Tree = Dict[str, Any]
 
-    grouped = {}
-    for pkg_name in top_level_packages:
-        pkg = importlib.import_module(pkg_name)
 
-        # Walk the package to find all submodules (including .py files)
-        submods = []
-        for _importer, modname, _ispkg in pkgutil.walk_packages(
-            pkg.__path__, prefix=f"{pkg_name}."
-        ):
-            # Skip test modules if requested
-            if skip_tests and (".test" in modname or modname.startswith("test")):
+def get_packages(skip_tests: bool = True) -> dict[str, list[str]]:
+    """Find importable packages in CWD and their submodules."""
+    result: dict[str, list[str]] = {}
+
+    for pkg_name in find_packages():
+        if "." in pkg_name:
+            continue
+        if skip_tests and pkg_name.startswith("test"):
+            continue
+        try:
+            pkg = importlib.import_module(pkg_name)
+        except ImportError as e:
+            log.warning("Skipping %r: %s", pkg_name, e)
+            continue
+
+        submods = [pkg_name]
+        for _, modname, _ in pkgutil.walk_packages(pkg.__path__, f"{pkg_name}."):
+            if skip_tests and ".test" in modname:
                 continue
             submods.append(modname)
 
-        # Include the top-level package itself
-        grouped[pkg_name] = [pkg_name] + submods
+        result[pkg_name] = submods
 
-    return grouped
+    return result
 
 
-def get_module_items(modname: str, skip_tests: bool = True) -> List[str]:
-    """Extract public functions and classes from a module."""
-    items = []
+def get_module_items(modname: str, skip_tests: bool = True) -> list[str]:
+    """Extract public functions and classes defined in a module."""
     try:
         mod = importlib.import_module(modname)
-        for name in dir(mod):
-            if name.startswith("_"):
-                continue
-            # Skip test functions/classes if requested
-            if skip_tests and name.startswith("test"):
-                continue
-            obj = getattr(mod, name)
-            if getattr(obj, "__module__", None) == modname:
-                if inspect.isfunction(obj):
-                    items.append(f"{name}()")
-                elif inspect.isclass(obj):
-                    items.append(name)
-    except Exception:
-        pass
+    except ImportError as e:
+        log.warning("Could not import %r: %s", modname, e)
+        return []
+
+    items = []
+    for name in dir(mod):
+        if name.startswith("_"):
+            continue
+        if skip_tests and name.startswith("test"):
+            continue
+        obj = getattr(mod, name)
+        if getattr(obj, "__module__", None) != modname:
+            continue
+        if inspect.isfunction(obj):
+            items.append(f"{name}()")
+        elif inspect.isclass(obj):
+            items.append(name)
+
     return sorted(items)
 
 
-def build_tree(
-    submods: List[str], pkg_name: str, skip_tests: bool = True
-) -> Dict[str, Any]:
-    """Build nested tree structure from flat module list."""
-    tree = {}
+def build_tree(submods: list[str], pkg_name: str, skip_tests: bool = True) -> Tree:
+    """Build nested tree from flat module list."""
+    tree: Tree = {}
+
     for modname in sorted(submods):
         if modname == pkg_name:
             tree["__items__"] = get_module_items(modname, skip_tests=skip_tests)
             continue
 
-        short_name = modname[len(pkg_name) + 1 :]
-        parts = short_name.split(".")
-
-        current = tree
+        parts = modname[len(pkg_name) + 1 :].split(".")
+        node = tree
         for part in parts:
-            if part not in current:
-                current[part] = {}
-            current = current[part]
+            node = node.setdefault(part, {})
+        node["__items__"] = get_module_items(modname, skip_tests=skip_tests)
 
-        current["__items__"] = get_module_items(modname, skip_tests=skip_tests)
     return tree

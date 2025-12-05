@@ -1,13 +1,16 @@
 # pypatree
 
+[![CI](https://github.com/yberreby/pypatree/actions/workflows/ci.yml/badge.svg)](https://github.com/yberreby/pypatree/actions/workflows/ci.yml)
+
+Pretty-print a project's module tree.
+
 ```bash
-uv add --dev https://github.com/yberreby/pypatree.git
+uv add --dev pypatree
 uv run pypatree
 ```
 
 Example output on this very repo:
 ```
-❯ uv run pypatree
 pypatree
 ├── build_tree()
 ├── get_module_items()
@@ -16,5 +19,6 @@ pypatree
 │   ├── main()
 │   └── run()
 └── display
+    ├── print_tree()
     └── render_tree()
 ```
