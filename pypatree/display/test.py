@@ -29,3 +29,19 @@ def test_print_tree(capsys) -> None:  # type: ignore[no-untyped-def]
     print_tree({"__items__": ["x()"]})
     out = capsys.readouterr().out
     assert "x()" in out
+
+
+def test_items_not_duplicated_with_nested_children() -> None:
+    """Items should appear once, not twice when module has both items AND children."""
+    tree = {
+        "__items__": ["root()"],
+        "child": {
+            "__items__": ["child_item()"],
+            "grandchild": {"__items__": ["deep()"]},
+        },
+    }
+    lines = render_tree(tree)
+    # child_item() should appear exactly once
+    assert (
+        lines.count("    ├── child_item()") + lines.count("    └── child_item()") == 1
+    )
