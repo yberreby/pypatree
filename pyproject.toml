@@ -48,6 +48,7 @@ dev = [
     "rust-just>=1.43.1",
     "testpkg",
     "brokenpkg",
+    "mypy>=1.19.0",
 ]
 
 [tool.uv.sources]
@@ -75,3 +76,6 @@ reportAny = false
 reportExplicitAny = false
 reportUnknownMemberType = false
 reportUnknownArgumentType = false
+
+[tool.mypy]
+exclude = ["tests/stubs"]

@@ -4,12 +4,13 @@ import os
 import subprocess
 import tempfile
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).parent.parent
 PYPATREE = f"pypatree@{ROOT}"
 
 
-def run(*cmd: str, **kw) -> subprocess.CompletedProcess[bytes]:
+def run(*cmd: str, **kw: Any) -> subprocess.CompletedProcess[bytes]:
     env = {k: v for k, v in os.environ.items() if k != "VIRTUAL_ENV"}
     return subprocess.run(cmd, capture_output=True, env=env, **kw)
 
