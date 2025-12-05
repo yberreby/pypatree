@@ -1,9 +1,11 @@
 """Tests for discovery module - uses pypatree itself as test subject."""
 
+import re
+from unittest.mock import patch
+
 from pypatree.config import DEFAULT_EXCLUDE
 
 from . import _get_local_packages, _matches_exclude, get_packages
-import re
 
 
 def test_matches_exclude_exact_test() -> None:
@@ -62,3 +64,10 @@ def test_get_packages_includes_test_modules_when_no_exclude() -> None:
     submods = result["pypatree"]
     assert "pypatree.discovery.test" in submods
     assert "pypatree.display.test" in submods
+
+
+def test_get_packages_skips_unimportable() -> None:
+    """Packages that fail to import are skipped."""
+    with patch("pypatree.discovery.safe_import", return_value=None):
+        result = get_packages()
+    assert result == {}

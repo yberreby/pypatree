@@ -11,6 +11,24 @@ from pypatree.introspection import safe_import
 log = logging.getLogger(__name__)
 
 
+def _find_packages_in_dir(source_path: str) -> list[str]:
+    """Find top-level Python packages in a source directory."""
+    # Detect src-layout vs flat layout
+    src_dir = os.path.join(source_path, "src")
+    search_dir = src_dir if os.path.isdir(src_dir) else source_path
+
+    packages = []
+    for name in os.listdir(search_dir):
+        if name.startswith((".", "_")):
+            continue
+        pkg_path = os.path.join(search_dir, name)
+        init_path = os.path.join(pkg_path, "__init__.py")
+        if os.path.isdir(pkg_path) and os.path.isfile(init_path):
+            packages.append(name)
+
+    return packages
+
+
 def _get_local_packages() -> list[str]:
     """Find packages installed from current directory via PEP 610 metadata."""
     cwd_url = "file://" + os.getcwd()
@@ -22,12 +40,14 @@ def _get_local_packages() -> list[str]:
         for f in dist.files or []:
             if f.name == "direct_url.json":
                 data = json.loads(f.read_text())
-                url = data.get("url", "")
-                if url.startswith(cwd_url):
-                    name = dist.metadata["Name"]
-                    if name:
-                        log.debug("Found local package: %s (%s)", name, url)
-                        packages.append(name)
+                url = data.get("url", "").rstrip("/")
+                # Must be EXACTLY cwd, not a subdirectory
+                if url == cwd_url and data.get("dir_info", {}).get("editable"):
+                    assert url.startswith("file://"), f"Expected file:// URL, got {url}"
+                    source_path = url.removeprefix("file://")
+                    for pkg in _find_packages_in_dir(source_path):
+                        log.debug("Found local package: %s", pkg)
+                        packages.append(pkg)
                 break
 
     log.debug("Local packages: %s", packages)
@@ -47,9 +67,6 @@ def get_packages(exclude: Optional[str] = None) -> dict[str, list[str]]:
     result: dict[str, list[str]] = {}
 
     for pkg_name in _get_local_packages():
-        if _matches_exclude(pkg_name, pattern):
-            log.info("Excluding package: %s", pkg_name)
-            continue
         pkg = safe_import(pkg_name)
         if pkg is None:
             continue

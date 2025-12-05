@@ -178,7 +178,7 @@ httpx
 │   'typing.TextIO | None' = None) -> 'None'
 ├── WriteError(message: 'str', *, request: 'Request | None' = None) -> 'None'
 ├── WriteTimeout(message: 'str', *, request: 'Request | None' = None) -> 'None'
-├── codes(*args, **kwargs)
+├── codes(*args, **kwds)
 ├── create_ssl_context(verify: 'ssl.SSLContext | str | bool' = True, cert: 
 │   'CertTypes | None' = None, trust_env: 'bool' = True) -> 'ssl.SSLContext'
 ├── delete(url: 'URL | str', *, params: 'QueryParamTypes | None' = None, 
@@ -263,7 +263,7 @@ httpx
 │   │   'float') -> 'None'
 │   ├── BoundSyncStream(stream: 'SyncByteStream', response: 'Response', start: 
 │   │   'float') -> 'None'
-│   ├── ClientState(*args, **kwargs)
+│   ├── ClientState(*args, **kwds)
 │   └── UseClientDefault(*args, **kwargs)
 ├── _config
 │   └── UnsetType(*args, **kwargs)
@@ -354,4 +354,10 @@ httpx
     │   'typing.AnyStr'
     ├── to_str(value: 'str | bytes', encoding: 'str' = 'utf-8') -> 'str'
     └── unquote(value: 'str') -> 'str'
+tests
+├── client
+├── common
+├── concurrency
+├── conftest
+└── models
 ```

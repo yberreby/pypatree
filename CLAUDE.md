@@ -27,3 +27,5 @@ Code should be minimal, modular, orthogonal, easy to understand, maintain, and e
 Tests should be useful. Do not write tests that duplicate implementation details and are exceedingly-tightly coupled (e.g. checking that a default value is what we set: BAD).
 
 Do not abuse mocking.
+
+If you _assume_ something, assert it or make sure that this hypothesis being violated would result in a loud failure in some other way.
