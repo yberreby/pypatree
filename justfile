@@ -1,5 +1,5 @@
-# Local dev (includes dogfood)
-default: check dogfood smoke
+# Local dev
+default: check dogfood
 
 # CI pipeline
 ci: check smoke readme
