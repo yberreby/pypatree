@@ -34,6 +34,15 @@ def test_print_tree(capsys) -> None:  # type: ignore[no-untyped-def]
     assert "x()" in out
 
 
+def test_print_tree_with_docstrings(capsys) -> None:  # type: ignore[no-untyped-def]
+    cfg = Config(docstrings=DocstringMode.short)
+    # config module has a docstring, so this exercises the docstring label path
+    print_tree("pypatree", {"config": {"__items__": ["x()"]}}, cfg)
+    out = capsys.readouterr().out
+    assert "pypatree" in out
+    assert "config" in out
+
+
 def test_items_not_duplicated_with_nested_children() -> None:
     """Items should appear once, not twice when module has both items AND children."""
     tree = {

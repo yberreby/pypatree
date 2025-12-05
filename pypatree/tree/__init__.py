@@ -8,7 +8,9 @@ log = logging.getLogger(__name__)
 Tree = dict[str, Any]
 
 
-def build_tree(submods: list[str], pkg_name: str, exclude: Optional[str] = None) -> Tree:
+def build_tree(
+    submods: list[str], pkg_name: str, exclude: Optional[str] = None
+) -> Tree:
     """Build nested tree from flat module list."""
     log.debug("Building tree for %s from %d submodules", pkg_name, len(submods))
     tree: Tree = {}

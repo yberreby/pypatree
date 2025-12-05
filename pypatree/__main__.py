@@ -15,7 +15,9 @@ def run(cfg: Config) -> None:
 
 
 def main() -> None:
-    cfg = tyro.cli(Config, description="Display module tree with public functions/classes.")
+    cfg = tyro.cli(
+        Config, description="Display module tree with public functions/classes."
+    )
     run(cfg)
 
 
