@@ -77,7 +77,7 @@ httpx
 ├── StreamConsumed() -> 'None'
 ├── StreamError(message: 'str') -> 'None'
 ├── SyncByteStream(*args, **kwargs)
-├── Timeout(timeout: 'TimeoutTypes | UnsetType' = <httpx._config.UnsetType object at 0x7fbcb19f3e50>, *, connect: 'None | float | UnsetType' = <httpx._config.UnsetType object at 0x7fbcb19f3e50>, read: 'None | float | UnsetType' = <httpx._config.UnsetType object at 0x7fbcb19f3e50>, write: 'None | float | UnsetType' = <httpx._config.UnsetType object at 0x7fbcb19f3e50>, pool: 'None | float | UnsetType' = <httpx._config.UnsetType object at 0x7fbcb19f3e50>) -> 'None'
+├── Timeout(timeout: 'TimeoutTypes | UnsetType' = <httpx._config.UnsetType object>, *, connect: 'None | float | UnsetType' = <httpx._config.UnsetType object>, read: 'None | float | UnsetType' = <httpx._config.UnsetType object>, write: 'None | float | UnsetType' = <httpx._config.UnsetType object>, pool: 'None | float | UnsetType' = <httpx._config.UnsetType object>) -> 'None'
 ├── TimeoutException(message: 'str', *, request: 'Request | None' = None) -> 'None'
 ├── TooManyRedirects(message: 'str', *, request: 'Request | None' = None) -> 'None'
 ├── TransportError(message: 'str', *, request: 'Request | None' = None) -> 'None'
