@@ -16,3 +16,8 @@ Example output on this very repo:
 ```
 {{PYPATREE_OUTPUT}}
 ```
+
+Example on [{{SHOWCASE_NAME}}]({{SHOWCASE_URL}}):
+```
+{{SHOWCASE_OUTPUT}}
+```

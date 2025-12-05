@@ -3,23 +3,38 @@
 
 import subprocess
 import sys
-from pathlib import Path
 
-ROOT = Path(__file__).parent.parent
+from lib import ROOT, run_pypatree_on_repo
+
 TEMPLATE = ROOT / "README.md.in"
 OUTPUT = ROOT / "README.md"
-PLACEHOLDER = "{{PYPATREE_OUTPUT}}"
+
+# External repo to showcase (easily configurable)
+SHOWCASE_REPO = "https://github.com/encode/httpx.git"
 
 
 def generate() -> str:
     template = TEMPLATE.read_text()
-    output = subprocess.run(
+
+    # Self output
+    self_output = subprocess.run(
         ["uv", "run", "pypatree"],
         capture_output=True,
         text=True,
         cwd=ROOT,
     ).stdout.strip()
-    return template.replace(PLACEHOLDER, output)
+    template = template.replace("{{PYPATREE_OUTPUT}}", self_output)
+
+    # External repo showcase
+    if "{{SHOWCASE_OUTPUT}}" in template:
+        name = SHOWCASE_REPO.split("/")[-1].removesuffix(".git")
+        url = SHOWCASE_REPO.removesuffix(".git")
+        output = run_pypatree_on_repo(SHOWCASE_REPO).strip()
+        template = template.replace("{{SHOWCASE_NAME}}", name)
+        template = template.replace("{{SHOWCASE_URL}}", url)
+        template = template.replace("{{SHOWCASE_OUTPUT}}", output)
+
+    return template
 
 
 def main() -> int:
