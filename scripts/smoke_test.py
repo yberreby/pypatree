@@ -11,6 +11,7 @@ REPOS = [
     "https://github.com/encode/httpx.git",
     "https://github.com/Textualize/rich.git",
     "https://github.com/pydantic/pydantic-settings.git",
+    "https://github.com/brentyi/tyro.git",
 ]
 
 ROOT = Path(__file__).parent.parent

@@ -1,4 +1,4 @@
-default: check dogfood
+default: check dogfood smoke
 
 dogfood:
     # Let's print our own tree!
@@ -27,3 +27,6 @@ test:
 
 test-fast:
     uv run pytest -x -q
+
+smoke:
+    uv run python scripts/smoke_test.py
