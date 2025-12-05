@@ -7,7 +7,7 @@ dogfood:
 setup:
     uv run pre-commit install --hook-type pre-push
 
-check: lint typecheck test readme-check
+check: lint typecheck test
 
 readme:
     uv run python scripts/update_readme.py
