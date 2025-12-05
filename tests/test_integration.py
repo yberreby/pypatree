@@ -25,4 +25,4 @@ def test_broken_package_skipped(caplog, capsys) -> None:  # type: ignore[no-unty
     with caplog.at_level(logging.WARNING):
         run(Config(exclude=None, docstrings=DocstringMode.none))
     assert "brokenpkg" not in capsys.readouterr().out
-    assert "Skipping" in caplog.text
+    assert "brokenpkg" in caplog.text

@@ -2,9 +2,26 @@ import importlib
 import inspect
 import logging
 import re
+from types import ModuleType
 from typing import Callable, Optional, Union
 
 log = logging.getLogger(__name__)
+
+
+def safe_import(modname: str) -> Optional[ModuleType]:
+    """Import a module, returning None on any failure."""
+    try:
+        return importlib.import_module(modname)
+    except ImportError as e:
+        log.warning("Could not import %r: %s", modname, e)
+    except SystemExit as e:
+        log.error("Skipping %r (module called sys.exit): %s", modname, e)
+    except Exception as e:
+        log.error(
+            "Skipping %r (unexpected error): %s: %s", modname, type(e).__name__, e
+        )
+    return None
+
 
 _OBJECT_ADDR_RE = re.compile(r" at 0x[0-9a-fA-F]+>")
 
@@ -26,9 +43,8 @@ def format_signature(obj: Union[Callable, type]) -> str:
 
 def get_module_docstring(modname: str, short: bool = True) -> Optional[str]:
     """Get a module's docstring, optionally just the first line."""
-    try:
-        mod = importlib.import_module(modname)
-    except ImportError:
+    mod = safe_import(modname)
+    if mod is None:
         return None
     doc = mod.__doc__
     if not doc:
@@ -41,10 +57,8 @@ def get_module_docstring(modname: str, short: bool = True) -> Optional[str]:
 def get_module_items(modname: str, exclude: Optional[str] = None) -> list[str]:
     """Extract public functions and classes with signatures from a module."""
     pattern = re.compile(exclude) if exclude else None
-    try:
-        mod = importlib.import_module(modname)
-    except ImportError as e:
-        log.warning("Could not import %r: %s", modname, e)
+    mod = safe_import(modname)
+    if mod is None:
         return []
 
     items = []

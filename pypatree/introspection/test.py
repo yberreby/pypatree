@@ -1,4 +1,10 @@
-from . import format_signature, get_module_docstring, get_module_items
+import sys
+import types
+from unittest.mock import patch
+
+from pypatree.config import DEFAULT_EXCLUDE
+
+from . import format_signature, get_module_docstring, get_module_items, safe_import
 
 
 def test_format_signature_function() -> None:
@@ -29,8 +35,6 @@ def test_get_module_items_import_error() -> None:
 
 
 def test_get_module_items_excludes_test_functions() -> None:
-    from pypatree.config import DEFAULT_EXCLUDE
-
     items = get_module_items("pypatree.introspection.test", exclude=DEFAULT_EXCLUDE)
     assert not any("test_" in i for i in items)
 
@@ -52,13 +56,6 @@ def test_get_module_docstring_not_found() -> None:
 
 
 def test_get_module_docstring_no_docstring() -> None:
-    # test_stub has a docstring but its parent (tests.stubs) doesn't exist as module
-    # Use a module known to have no docstring
-    import types
-
-    # Create a module without docstring dynamically
-    import sys
-
     mod = types.ModuleType("_test_no_doc")
     mod.__doc__ = None
     sys.modules["_test_no_doc"] = mod
@@ -79,3 +76,13 @@ def test_format_signature_strips_memory_addresses() -> None:
     sig = format_signature(fn)
     assert "0x" not in sig
     assert "object>" in sig
+
+
+def test_safe_import_handles_system_exit() -> None:
+    with patch("importlib.import_module", side_effect=SystemExit("exit!")):
+        assert safe_import("anything") is None
+
+
+def test_safe_import_handles_unexpected_exception() -> None:
+    with patch("importlib.import_module", side_effect=RuntimeError("boom")):
+        assert safe_import("anything") is None

@@ -1,4 +1,3 @@
-import importlib
 import importlib.metadata as meta
 import json
 import logging
@@ -6,6 +5,8 @@ import os
 import pkgutil
 import re
 from typing import Optional
+
+from pypatree.introspection import safe_import
 
 log = logging.getLogger(__name__)
 
@@ -49,10 +50,8 @@ def get_packages(exclude: Optional[str] = None) -> dict[str, list[str]]:
         if _matches_exclude(pkg_name, pattern):
             log.info("Excluding package: %s", pkg_name)
             continue
-        try:
-            pkg = importlib.import_module(pkg_name)
-        except ImportError as e:
-            log.warning("Skipping %r (import failed): %s", pkg_name, e)
+        pkg = safe_import(pkg_name)
+        if pkg is None:
             continue
 
         log.debug("Walking package: %s", pkg_name)
