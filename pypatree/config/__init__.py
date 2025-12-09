@@ -22,7 +22,9 @@ class DocstringMode(Enum):
 class Config:
     """Configuration for pypatree output."""
 
-    scope: Annotated[Optional[str], tyro.conf.Positional] = None
+    scope: Annotated[
+        Optional[str], tyro.conf.Positional, tyro.conf.arg(metavar="[MODULE]")
+    ] = None
     """Module path to scope to (e.g., 'mypkg.submodule')."""
 
     exclude: Optional[str] = DEFAULT_EXCLUDE
