@@ -2,7 +2,9 @@
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
+from typing import Annotated, Optional
+
+import tyro.conf
 
 # Default excludes modules named "test" or starting with "test_"
 DEFAULT_EXCLUDE = r"^test$|^test_"
@@ -19,6 +21,9 @@ class DocstringMode(Enum):
 @dataclass
 class Config:
     """Configuration for pypatree output."""
+
+    scope: Annotated[Optional[str], tyro.conf.Positional] = None
+    """Module path to scope to (e.g., 'mypkg.submodule')."""
 
     exclude: Optional[str] = DEFAULT_EXCLUDE
     """Regex to exclude module segments (default: test modules). Use '' for none."""

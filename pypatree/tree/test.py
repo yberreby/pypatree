@@ -1,4 +1,25 @@
-from . import build_tree
+from . import build_tree, get_subtree
+
+
+def test_get_subtree_empty_path() -> None:
+    tree = {"a": {"b": {}}}
+    assert get_subtree(tree, []) is tree
+
+
+def test_get_subtree_single_level() -> None:
+    tree = {"a": {"__items__": []}, "b": {}}
+    assert get_subtree(tree, ["a"]) == {"__items__": []}
+
+
+def test_get_subtree_nested() -> None:
+    tree = {"a": {"b": {"c": {"__items__": ["x"]}}}}
+    assert get_subtree(tree, ["a", "b", "c"]) == {"__items__": ["x"]}
+
+
+def test_get_subtree_not_found() -> None:
+    tree = {"a": {"b": {}}}
+    assert get_subtree(tree, ["a", "x"]) is None
+    assert get_subtree(tree, ["z"]) is None
 
 
 def test_build_tree_type() -> None:

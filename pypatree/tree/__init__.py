@@ -8,6 +8,16 @@ log = logging.getLogger(__name__)
 Tree = dict[str, Any]
 
 
+def get_subtree(tree: Tree, path: list[str]) -> Optional[Tree]:
+    """Navigate to a subtree by path components. Returns None if not found."""
+    node = tree
+    for part in path:
+        if part not in node:
+            return None
+        node = node[part]
+    return node
+
+
 def build_tree(
     submods: list[str], pkg_name: str, exclude: Optional[str] = None
 ) -> Tree:
