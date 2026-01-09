@@ -18,26 +18,42 @@ pypatree  pypatree - Pretty-print a project's module tree.
 │   ├── main() -> None
 │   └── run(cfg: pypatree.config.Config) -> None
 ├── config  Configuration types for pypatree.
-│   ├── Config(scope: Optional[str], exclude: Optional[str], docstrings: 
-│   │   pypatree.config.DocstringMode, show_defaults: bool) -> None
+│   ├── Config(
+│   │       scope: Optional[str],
+│   │       exclude: Optional[str],
+│   │       docstrings: pypatree.config.DocstringMode,
+│   │       show_defaults: bool,
+│   │   ) -> None
 │   └── DocstringMode(*args, **kwargs)
 ├── discovery
 │   └── get_packages(exclude: Optional[str]) -> dict[str, list[str]]
 ├── display
-│   ├── print_tree(pkg_name: str, tree: dict[str, typing.Any], cfg: 
-│   │   pypatree.config.Config) -> None
+│   ├── print_tree(
+│   │       pkg_name: str,
+│   │       tree: dict[str, typing.Any],
+│   │       cfg: pypatree.config.Config,
+│   │   ) -> None
 │   └── render_tree(tree: dict[str, typing.Any], prefix: str) -> list[str]
 ├── introspection
 │   ├── format_signature(obj: Union[Callable, type], show_defaults: bool) -> str
 │   ├── get_module_docstring(modname: str, short: bool) -> Optional[str]
-│   ├── get_module_items(modname: str, exclude: Optional[str], show_defaults: 
-│   │   bool) -> list[str]
+│   ├── get_module_items(
+│   │       modname: str,
+│   │       exclude: Optional[str],
+│   │       show_defaults: bool,
+│   │   ) -> list[str]
 │   └── safe_import(modname: str) -> Optional[module]
 └── tree
-    ├── build_tree(submods: list[str], pkg_name: str, exclude: Optional[str], 
-    │   show_defaults: bool) -> dict[str, typing.Any]
-    └── get_subtree(tree: dict[str, typing.Any], path: list[str]) -> 
-        Optional[dict[str, Any]]
+    ├── build_tree(
+    │       submods: list[str],
+    │       pkg_name: str,
+    │       exclude: Optional[str],
+    │       show_defaults: bool,
+    │   ) -> dict[str, typing.Any]
+    └── get_subtree(
+            tree: dict[str, typing.Any],
+            path: list[str],
+        ) -> Optional[dict[str, Any]]
 ```
 
 Run `pypatree --help` for options:
@@ -67,35 +83,75 @@ Display module tree with public functions/classes.
 Example on [httpx](https://github.com/encode/httpx):
 ```
 httpx
-├── ASGITransport(app: _ASGIApp, raise_app_exceptions: bool, root_path: str, 
-│   client: tuple[str, int]) -> None
+├── ASGITransport(
+│       app: _ASGIApp,
+│       raise_app_exceptions: bool,
+│       root_path: str,
+│       client: tuple[str, int],
+│   ) -> None
 ├── AsyncBaseTransport(*args, **kwargs)
 ├── AsyncByteStream(*args, **kwargs)
-├── AsyncClient(*, auth: AuthTypes | None, params: QueryParamTypes | None, 
-│   headers: HeaderTypes | None, cookies: CookieTypes | None, verify: 
-│   ssl.SSLContext | str | bool, cert: CertTypes | None, http1: bool, http2: 
-│   bool, proxy: ProxyTypes | None, mounts: None | typing.Mapping[str, 
-│   AsyncBaseTransport | None], timeout: TimeoutTypes, follow_redirects: bool, 
-│   limits: Limits, max_redirects: int, event_hooks: None | typing.Mapping[str, 
-│   list[EventHook]], base_url: URL | str, transport: AsyncBaseTransport | None,
-│   trust_env: bool, default_encoding: str | typing.Callable[[bytes], str]) -> 
-│   None
-├── AsyncHTTPTransport(verify: ssl.SSLContext | str | bool, cert: CertTypes | 
-│   None, trust_env: bool, http1: bool, http2: bool, limits: Limits, proxy: 
-│   ProxyTypes | None, uds: str | None, local_address: str | None, retries: int,
-│   socket_options: typing.Iterable[SOCKET_OPTION] | None) -> None
+├── AsyncClient(
+│       *,
+│       auth: AuthTypes | None,
+│       params: QueryParamTypes | None,
+│       headers: HeaderTypes | None,
+│       cookies: CookieTypes | None,
+│       verify: ssl.SSLContext | str | bool,
+│       cert: CertTypes | None,
+│       http1: bool,
+│       http2: bool,
+│       proxy: ProxyTypes | None,
+│       mounts: None | typing.Mapping[str, AsyncBaseTransport | None],
+│       timeout: TimeoutTypes,
+│       follow_redirects: bool,
+│       limits: Limits,
+│       max_redirects: int,
+│       event_hooks: None | typing.Mapping[str, list[EventHook]],
+│       base_url: URL | str,
+│       transport: AsyncBaseTransport | None,
+│       trust_env: bool,
+│       default_encoding: str | typing.Callable[[bytes], str],
+│   ) -> None
+├── AsyncHTTPTransport(
+│       verify: ssl.SSLContext | str | bool,
+│       cert: CertTypes | None,
+│       trust_env: bool,
+│       http1: bool,
+│       http2: bool,
+│       limits: Limits,
+│       proxy: ProxyTypes | None,
+│       uds: str | None,
+│       local_address: str | None,
+│       retries: int,
+│       socket_options: typing.Iterable[SOCKET_OPTION] | None,
+│   ) -> None
 ├── Auth(*args, **kwargs)
 ├── BaseTransport(*args, **kwargs)
 ├── BasicAuth(username: str | bytes, password: str | bytes) -> None
 ├── ByteStream(stream: bytes) -> None
-├── Client(*, auth: AuthTypes | None, params: QueryParamTypes | None, headers: 
-│   HeaderTypes | None, cookies: CookieTypes | None, verify: ssl.SSLContext | 
-│   str | bool, cert: CertTypes | None, trust_env: bool, http1: bool, http2: 
-│   bool, proxy: ProxyTypes | None, mounts: None | typing.Mapping[str, 
-│   BaseTransport | None], timeout: TimeoutTypes, follow_redirects: bool, 
-│   limits: Limits, max_redirects: int, event_hooks: None | typing.Mapping[str, 
-│   list[EventHook]], base_url: URL | str, transport: BaseTransport | None, 
-│   default_encoding: str | typing.Callable[[bytes], str]) -> None
+├── Client(
+│       *,
+│       auth: AuthTypes | None,
+│       params: QueryParamTypes | None,
+│       headers: HeaderTypes | None,
+│       cookies: CookieTypes | None,
+│       verify: ssl.SSLContext | str | bool,
+│       cert: CertTypes | None,
+│       trust_env: bool,
+│       http1: bool,
+│       http2: bool,
+│       proxy: ProxyTypes | None,
+│       mounts: None | typing.Mapping[str, BaseTransport | None],
+│       timeout: TimeoutTypes,
+│       follow_redirects: bool,
+│       limits: Limits,
+│       max_redirects: int,
+│       event_hooks: None | typing.Mapping[str, list[EventHook]],
+│       base_url: URL | str,
+│       transport: BaseTransport | None,
+│       default_encoding: str | typing.Callable[[bytes], str],
+│   ) -> None
 ├── CloseError(message: str, *, request: Request | None) -> None
 ├── ConnectError(message: str, *, request: Request | None) -> None
 ├── ConnectTimeout(message: str, *, request: Request | None) -> None
@@ -105,123 +161,282 @@ httpx
 ├── DigestAuth(username: str | bytes, password: str | bytes) -> None
 ├── FunctionAuth(func: typing.Callable[[Request], Request]) -> None
 ├── HTTPError(message: str) -> None
-├── HTTPStatusError(message: str, *, request: Request, response: Response) -> 
-│   None
-├── HTTPTransport(verify: ssl.SSLContext | str | bool, cert: CertTypes | None, 
-│   trust_env: bool, http1: bool, http2: bool, limits: Limits, proxy: ProxyTypes
-│   | None, uds: str | None, local_address: str | None, retries: int, 
-│   socket_options: typing.Iterable[SOCKET_OPTION] | None) -> None
+├── HTTPStatusError(
+│       message: str,
+│       *,
+│       request: Request,
+│       response: Response,
+│   ) -> None
+├── HTTPTransport(
+│       verify: ssl.SSLContext | str | bool,
+│       cert: CertTypes | None,
+│       trust_env: bool,
+│       http1: bool,
+│       http2: bool,
+│       limits: Limits,
+│       proxy: ProxyTypes | None,
+│       uds: str | None,
+│       local_address: str | None,
+│       retries: int,
+│       socket_options: typing.Iterable[SOCKET_OPTION] | None,
+│   ) -> None
 ├── Headers(headers: HeaderTypes | None, encoding: str | None) -> None
 ├── InvalidURL(message: str) -> None
-├── Limits(*, max_connections: int | None, max_keepalive_connections: int | 
-│   None, keepalive_expiry: float | None) -> None
+├── Limits(
+│       *,
+│       max_connections: int | None,
+│       max_keepalive_connections: int | None,
+│       keepalive_expiry: float | None,
+│   ) -> None
 ├── LocalProtocolError(message: str, *, request: Request | None) -> None
 ├── MockTransport(handler: SyncHandler | AsyncHandler) -> None
 ├── NetRCAuth(file: str | None) -> None
 ├── NetworkError(message: str, *, request: Request | None) -> None
 ├── PoolTimeout(message: str, *, request: Request | None) -> None
 ├── ProtocolError(message: str, *, request: Request | None) -> None
-├── Proxy(url: URL | str, *, ssl_context: ssl.SSLContext | None, auth: 
-│   tuple[str, str] | None, headers: HeaderTypes | None) -> None
+├── Proxy(
+│       url: URL | str,
+│       *,
+│       ssl_context: ssl.SSLContext | None,
+│       auth: tuple[str, str] | None,
+│       headers: HeaderTypes | None,
+│   ) -> None
 ├── ProxyError(message: str, *, request: Request | None) -> None
 ├── QueryParams(*args: QueryParamTypes | None, **kwargs: typing.Any) -> None
 ├── ReadError(message: str, *, request: Request | None) -> None
 ├── ReadTimeout(message: str, *, request: Request | None) -> None
 ├── RemoteProtocolError(message: str, *, request: Request | None) -> None
-├── Request(method: str, url: URL | str, *, params: QueryParamTypes | None, 
-│   headers: HeaderTypes | None, cookies: CookieTypes | None, content: 
-│   RequestContent | None, data: RequestData | None, files: RequestFiles | None,
-│   json: typing.Any | None, stream: SyncByteStream | AsyncByteStream | None, 
-│   extensions: RequestExtensions | None) -> None
+├── Request(
+│       method: str,
+│       url: URL | str,
+│       *,
+│       params: QueryParamTypes | None,
+│       headers: HeaderTypes | None,
+│       cookies: CookieTypes | None,
+│       content: RequestContent | None,
+│       data: RequestData | None,
+│       files: RequestFiles | None,
+│       json: typing.Any | None,
+│       stream: SyncByteStream | AsyncByteStream | None,
+│       extensions: RequestExtensions | None,
+│   ) -> None
 ├── RequestError(message: str, *, request: Request | None) -> None
 ├── RequestNotRead() -> None
-├── Response(status_code: int, *, headers: HeaderTypes | None, content: 
-│   ResponseContent | None, text: str | None, html: str | None, json: 
-│   typing.Any, stream: SyncByteStream | AsyncByteStream | None, request: 
-│   Request | None, extensions: ResponseExtensions | None, history: 
-│   list[Response] | None, default_encoding: str | typing.Callable[[bytes], 
-│   str]) -> None
+├── Response(
+│       status_code: int,
+│       *,
+│       headers: HeaderTypes | None,
+│       content: ResponseContent | None,
+│       text: str | None,
+│       html: str | None,
+│       json: typing.Any,
+│       stream: SyncByteStream | AsyncByteStream | None,
+│       request: Request | None,
+│       extensions: ResponseExtensions | None,
+│       history: list[Response] | None,
+│       default_encoding: str | typing.Callable[[bytes], str],
+│   ) -> None
 ├── ResponseNotRead() -> None
 ├── StreamClosed() -> None
 ├── StreamConsumed() -> None
 ├── StreamError(message: str) -> None
 ├── SyncByteStream(*args, **kwargs)
-├── Timeout(timeout: TimeoutTypes | UnsetType, *, connect: None | float | 
-│   UnsetType, read: None | float | UnsetType, write: None | float | UnsetType, 
-│   pool: None | float | UnsetType) -> None
+├── Timeout(
+│       timeout: TimeoutTypes | UnsetType,
+│       *,
+│       connect: None | float | UnsetType,
+│       read: None | float | UnsetType,
+│       write: None | float | UnsetType,
+│       pool: None | float | UnsetType,
+│   ) -> None
 ├── TimeoutException(message: str, *, request: Request | None) -> None
 ├── TooManyRedirects(message: str, *, request: Request | None) -> None
 ├── TransportError(message: str, *, request: Request | None) -> None
 ├── URL(url: URL | str, **kwargs: typing.Any) -> None
 ├── UnsupportedProtocol(message: str, *, request: Request | None) -> None
-├── WSGITransport(app: WSGIApplication, raise_app_exceptions: bool, script_name:
-│   str, remote_addr: str, wsgi_errors: typing.TextIO | None) -> None
+├── WSGITransport(
+│       app: WSGIApplication,
+│       raise_app_exceptions: bool,
+│       script_name: str,
+│       remote_addr: str,
+│       wsgi_errors: typing.TextIO | None,
+│   ) -> None
 ├── WriteError(message: str, *, request: Request | None) -> None
 ├── WriteTimeout(message: str, *, request: Request | None) -> None
 ├── codes(*args, **kwds)
-├── create_ssl_context(verify: ssl.SSLContext | str | bool, cert: CertTypes | 
-│   None, trust_env: bool) -> ssl.SSLContext
-├── delete(url: URL | str, *, params: QueryParamTypes | None, headers: 
-│   HeaderTypes | None, cookies: CookieTypes | None, auth: AuthTypes | None, 
-│   proxy: ProxyTypes | None, follow_redirects: bool, timeout: TimeoutTypes, 
-│   verify: ssl.SSLContext | str | bool, trust_env: bool) -> Response
-├── get(url: URL | str, *, params: QueryParamTypes | None, headers: HeaderTypes 
-│   | None, cookies: CookieTypes | None, auth: AuthTypes | None, proxy: 
-│   ProxyTypes | None, follow_redirects: bool, verify: ssl.SSLContext | str | 
-│   bool, timeout: TimeoutTypes, trust_env: bool) -> Response
-├── head(url: URL | str, *, params: QueryParamTypes | None, headers: HeaderTypes
-│   | None, cookies: CookieTypes | None, auth: AuthTypes | None, proxy: 
-│   ProxyTypes | None, follow_redirects: bool, verify: ssl.SSLContext | str | 
-│   bool, timeout: TimeoutTypes, trust_env: bool) -> Response
+├── create_ssl_context(
+│       verify: ssl.SSLContext | str | bool,
+│       cert: CertTypes | None,
+│       trust_env: bool,
+│   ) -> ssl.SSLContext
+├── delete(
+│       url: URL | str,
+│       *,
+│       params: QueryParamTypes | None,
+│       headers: HeaderTypes | None,
+│       cookies: CookieTypes | None,
+│       auth: AuthTypes | None,
+│       proxy: ProxyTypes | None,
+│       follow_redirects: bool,
+│       timeout: TimeoutTypes,
+│       verify: ssl.SSLContext | str | bool,
+│       trust_env: bool,
+│   ) -> Response
+├── get(
+│       url: URL | str,
+│       *,
+│       params: QueryParamTypes | None,
+│       headers: HeaderTypes | None,
+│       cookies: CookieTypes | None,
+│       auth: AuthTypes | None,
+│       proxy: ProxyTypes | None,
+│       follow_redirects: bool,
+│       verify: ssl.SSLContext | str | bool,
+│       timeout: TimeoutTypes,
+│       trust_env: bool,
+│   ) -> Response
+├── head(
+│       url: URL | str,
+│       *,
+│       params: QueryParamTypes | None,
+│       headers: HeaderTypes | None,
+│       cookies: CookieTypes | None,
+│       auth: AuthTypes | None,
+│       proxy: ProxyTypes | None,
+│       follow_redirects: bool,
+│       verify: ssl.SSLContext | str | bool,
+│       timeout: TimeoutTypes,
+│       trust_env: bool,
+│   ) -> Response
 ├── main() -> None
-├── options(url: URL | str, *, params: QueryParamTypes | None, headers: 
-│   HeaderTypes | None, cookies: CookieTypes | None, auth: AuthTypes | None, 
-│   proxy: ProxyTypes | None, follow_redirects: bool, verify: ssl.SSLContext | 
-│   str | bool, timeout: TimeoutTypes, trust_env: bool) -> Response
-├── patch(url: URL | str, *, content: RequestContent | None, data: RequestData |
-│   None, files: RequestFiles | None, json: typing.Any | None, params: 
-│   QueryParamTypes | None, headers: HeaderTypes | None, cookies: CookieTypes | 
-│   None, auth: AuthTypes | None, proxy: ProxyTypes | None, follow_redirects: 
-│   bool, verify: ssl.SSLContext | str | bool, timeout: TimeoutTypes, trust_env:
-│   bool) -> Response
-├── post(url: URL | str, *, content: RequestContent | None, data: RequestData | 
-│   None, files: RequestFiles | None, json: typing.Any | None, params: 
-│   QueryParamTypes | None, headers: HeaderTypes | None, cookies: CookieTypes | 
-│   None, auth: AuthTypes | None, proxy: ProxyTypes | None, follow_redirects: 
-│   bool, verify: ssl.SSLContext | str | bool, timeout: TimeoutTypes, trust_env:
-│   bool) -> Response
-├── put(url: URL | str, *, content: RequestContent | None, data: RequestData | 
-│   None, files: RequestFiles | None, json: typing.Any | None, params: 
-│   QueryParamTypes | None, headers: HeaderTypes | None, cookies: CookieTypes | 
-│   None, auth: AuthTypes | None, proxy: ProxyTypes | None, follow_redirects: 
-│   bool, verify: ssl.SSLContext | str | bool, timeout: TimeoutTypes, trust_env:
-│   bool) -> Response
-├── request(method: str, url: URL | str, *, params: QueryParamTypes | None, 
-│   content: RequestContent | None, data: RequestData | None, files: 
-│   RequestFiles | None, json: typing.Any | None, headers: HeaderTypes | None, 
-│   cookies: CookieTypes | None, auth: AuthTypes | None, proxy: ProxyTypes | 
-│   None, timeout: TimeoutTypes, follow_redirects: bool, verify: ssl.SSLContext 
-│   | str | bool, trust_env: bool) -> Response
-├── stream(method: str, url: URL | str, *, params: QueryParamTypes | None, 
-│   content: RequestContent | None, data: RequestData | None, files: 
-│   RequestFiles | None, json: typing.Any | None, headers: HeaderTypes | None, 
-│   cookies: CookieTypes | None, auth: AuthTypes | None, proxy: ProxyTypes | 
-│   None, timeout: TimeoutTypes, follow_redirects: bool, verify: ssl.SSLContext 
-│   | str | bool, trust_env: bool) -> typing.Iterator[Response]
+├── options(
+│       url: URL | str,
+│       *,
+│       params: QueryParamTypes | None,
+│       headers: HeaderTypes | None,
+│       cookies: CookieTypes | None,
+│       auth: AuthTypes | None,
+│       proxy: ProxyTypes | None,
+│       follow_redirects: bool,
+│       verify: ssl.SSLContext | str | bool,
+│       timeout: TimeoutTypes,
+│       trust_env: bool,
+│   ) -> Response
+├── patch(
+│       url: URL | str,
+│       *,
+│       content: RequestContent | None,
+│       data: RequestData | None,
+│       files: RequestFiles | None,
+│       json: typing.Any | None,
+│       params: QueryParamTypes | None,
+│       headers: HeaderTypes | None,
+│       cookies: CookieTypes | None,
+│       auth: AuthTypes | None,
+│       proxy: ProxyTypes | None,
+│       follow_redirects: bool,
+│       verify: ssl.SSLContext | str | bool,
+│       timeout: TimeoutTypes,
+│       trust_env: bool,
+│   ) -> Response
+├── post(
+│       url: URL | str,
+│       *,
+│       content: RequestContent | None,
+│       data: RequestData | None,
+│       files: RequestFiles | None,
+│       json: typing.Any | None,
+│       params: QueryParamTypes | None,
+│       headers: HeaderTypes | None,
+│       cookies: CookieTypes | None,
+│       auth: AuthTypes | None,
+│       proxy: ProxyTypes | None,
+│       follow_redirects: bool,
+│       verify: ssl.SSLContext | str | bool,
+│       timeout: TimeoutTypes,
+│       trust_env: bool,
+│   ) -> Response
+├── put(
+│       url: URL | str,
+│       *,
+│       content: RequestContent | None,
+│       data: RequestData | None,
+│       files: RequestFiles | None,
+│       json: typing.Any | None,
+│       params: QueryParamTypes | None,
+│       headers: HeaderTypes | None,
+│       cookies: CookieTypes | None,
+│       auth: AuthTypes | None,
+│       proxy: ProxyTypes | None,
+│       follow_redirects: bool,
+│       verify: ssl.SSLContext | str | bool,
+│       timeout: TimeoutTypes,
+│       trust_env: bool,
+│   ) -> Response
+├── request(
+│       method: str,
+│       url: URL | str,
+│       *,
+│       params: QueryParamTypes | None,
+│       content: RequestContent | None,
+│       data: RequestData | None,
+│       files: RequestFiles | None,
+│       json: typing.Any | None,
+│       headers: HeaderTypes | None,
+│       cookies: CookieTypes | None,
+│       auth: AuthTypes | None,
+│       proxy: ProxyTypes | None,
+│       timeout: TimeoutTypes,
+│       follow_redirects: bool,
+│       verify: ssl.SSLContext | str | bool,
+│       trust_env: bool,
+│   ) -> Response
+├── stream(
+│       method: str,
+│       url: URL | str,
+│       *,
+│       params: QueryParamTypes | None,
+│       content: RequestContent | None,
+│       data: RequestData | None,
+│       files: RequestFiles | None,
+│       json: typing.Any | None,
+│       headers: HeaderTypes | None,
+│       cookies: CookieTypes | None,
+│       auth: AuthTypes | None,
+│       proxy: ProxyTypes | None,
+│       timeout: TimeoutTypes,
+│       follow_redirects: bool,
+│       verify: ssl.SSLContext | str | bool,
+│       trust_env: bool,
+│   ) -> typing.Iterator[Response]
 ├── __version__
 ├── _api
 ├── _auth
 ├── _client
-│   ├── BaseClient(*, auth: AuthTypes | None, params: QueryParamTypes | None, 
-│   │   headers: HeaderTypes | None, cookies: CookieTypes | None, timeout: 
-│   │   TimeoutTypes, follow_redirects: bool, max_redirects: int, event_hooks: 
-│   │   None | typing.Mapping[str, list[EventHook]], base_url: URL | str, 
-│   │   trust_env: bool, default_encoding: str | typing.Callable[[bytes], str]) 
-│   │   -> None
-│   ├── BoundAsyncStream(stream: AsyncByteStream, response: Response, start: 
-│   │   float) -> None
-│   ├── BoundSyncStream(stream: SyncByteStream, response: Response, start: 
-│   │   float) -> None
+│   ├── BaseClient(
+│   │       *,
+│   │       auth: AuthTypes | None,
+│   │       params: QueryParamTypes | None,
+│   │       headers: HeaderTypes | None,
+│   │       cookies: CookieTypes | None,
+│   │       timeout: TimeoutTypes,
+│   │       follow_redirects: bool,
+│   │       max_redirects: int,
+│   │       event_hooks: None | typing.Mapping[str, list[EventHook]],
+│   │       base_url: URL | str,
+│   │       trust_env: bool,
+│   │       default_encoding: str | typing.Callable[[bytes], str],
+│   │   ) -> None
+│   ├── BoundAsyncStream(
+│   │       stream: AsyncByteStream,
+│   │       response: Response,
+│   │       start: float,
+│   │   ) -> None
+│   ├── BoundSyncStream(
+│   │       stream: SyncByteStream,
+│   │       response: Response,
+│   │       start: float,
+│   │   ) -> None
 │   ├── ClientState(*args, **kwds)
 │   └── UseClientDefault(*args, **kwargs)
 ├── _config
@@ -230,22 +445,33 @@ httpx
 │   ├── AsyncIteratorByteStream(stream: AsyncIterable[bytes]) -> None
 │   ├── IteratorByteStream(stream: Iterable[bytes]) -> None
 │   ├── UnattachedStream(*args, **kwargs)
-│   ├── encode_content(content: str | bytes | Iterable[bytes] | 
-│   │   AsyncIterable[bytes]) -> tuple[dict[str, str], SyncByteStream | 
-│   │   AsyncByteStream]
+│   ├── encode_content(
+│   │       content: str | bytes | Iterable[bytes] | AsyncIterable[bytes],
+│   │   ) -> tuple[dict[str, str], SyncByteStream | AsyncByteStream]
 │   ├── encode_html(html: str) -> tuple[dict[str, str], ByteStream]
 │   ├── encode_json(json: Any) -> tuple[dict[str, str], ByteStream]
-│   ├── encode_multipart_data(data: RequestData, files: RequestFiles, boundary: 
-│   │   bytes | None) -> tuple[dict[str, str], MultipartStream]
-│   ├── encode_request(content: RequestContent | None, data: RequestData | None,
-│   │   files: RequestFiles | None, json: Any | None, boundary: bytes | None) ->
-│   │   tuple[dict[str, str], SyncByteStream | AsyncByteStream]
-│   ├── encode_response(content: ResponseContent | None, text: str | None, html:
-│   │   str | None, json: Any | None) -> tuple[dict[str, str], SyncByteStream | 
-│   │   AsyncByteStream]
+│   ├── encode_multipart_data(
+│   │       data: RequestData,
+│   │       files: RequestFiles,
+│   │       boundary: bytes | None,
+│   │   ) -> tuple[dict[str, str], MultipartStream]
+│   ├── encode_request(
+│   │       content: RequestContent | None,
+│   │       data: RequestData | None,
+│   │       files: RequestFiles | None,
+│   │       json: Any | None,
+│   │       boundary: bytes | None,
+│   │   ) -> tuple[dict[str, str], SyncByteStream | AsyncByteStream]
+│   ├── encode_response(
+│   │       content: ResponseContent | None,
+│   │       text: str | None,
+│   │       html: str | None,
+│   │       json: Any | None,
+│   │   ) -> tuple[dict[str, str], SyncByteStream | AsyncByteStream]
 │   ├── encode_text(text: str) -> tuple[dict[str, str], ByteStream]
-│   └── encode_urlencoded_data(data: RequestData) -> tuple[dict[str, str], 
-│       ByteStream]
+│   └── encode_urlencoded_data(
+│           data: RequestData,
+│       ) -> tuple[dict[str, str], ByteStream]
 ├── _decoders  Handlers for Content-Encoding.
 │   ├── BrotliDecoder() -> None
 │   ├── ByteChunker(chunk_size: int | None) -> None
@@ -265,10 +491,14 @@ httpx
 ├── _multipart
 │   ├── DataField(name: str, value: str | bytes | int | float | None) -> None
 │   ├── FileField(name: str, value: FileTypes) -> None
-│   ├── MultipartStream(data: RequestData, files: RequestFiles, boundary: bytes 
-│   │   | None) -> None
-│   └── get_multipart_boundary_from_content_type(content_type: bytes | None) -> 
-│       bytes | None
+│   ├── MultipartStream(
+│   │       data: RequestData,
+│   │       files: RequestFiles,
+│   │       boundary: bytes | None,
+│   │   ) -> None
+│   └── get_multipart_boundary_from_content_type(
+│           content_type: bytes | None,
+│       ) -> bytes | None
 ├── _status_codes
 ├── _transports
 │   ├── asgi

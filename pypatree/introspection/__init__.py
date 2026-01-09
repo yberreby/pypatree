@@ -66,6 +66,53 @@ def _simplify_params(
     return result
 
 
+_MAX_ONELINER = 80
+
+
+def _format_params(params: list[inspect.Parameter], max_len: int) -> str:
+    """Format parameters, using multiple lines if needed.
+
+    Handles /, *, and *args/**kwargs markers correctly.
+    """
+    if not params:
+        return "()"
+
+    # Build parts with proper markers
+    parts: list[str] = []
+    saw_var_positional = False
+    prev_kind = None
+    PK = inspect.Parameter
+
+    for p in params:
+        # Insert / after positional-only params
+        if prev_kind == PK.POSITIONAL_ONLY and p.kind != PK.POSITIONAL_ONLY:
+            parts.append("/")
+
+        # Insert * before keyword-only params (if no *args)
+        if (
+            p.kind == PK.KEYWORD_ONLY
+            and not saw_var_positional
+            and prev_kind != PK.KEYWORD_ONLY
+        ):
+            parts.append("*")
+
+        if p.kind == PK.VAR_POSITIONAL:
+            saw_var_positional = True
+
+        parts.append(str(p))
+        prev_kind = p.kind
+
+    # Trailing / if all positional-only
+    if prev_kind == PK.POSITIONAL_ONLY:
+        parts.append("/")
+
+    oneliner = f"({', '.join(parts)})"
+    if len(oneliner) <= max_len:
+        return oneliner
+    # One arg per line
+    return "(\n    " + ",\n    ".join(parts) + ",\n)"
+
+
 def format_signature(obj: Union[Callable, type], show_defaults: bool) -> str:
     """Format function or class with full signature."""
     name = getattr(obj, "__name__", str(obj))
@@ -76,10 +123,19 @@ def format_signature(obj: Union[Callable, type], show_defaults: bool) -> str:
         else:
             sig = inspect.signature(obj)
             params = list(sig.parameters.values())
-        sig = sig.replace(parameters=_simplify_params(params, show_defaults))
+        params = _simplify_params(params, show_defaults)
+        ret = sig.return_annotation
+        if ret is inspect.Signature.empty:
+            ret_str = ""
+        else:
+            ret_str = f" -> {inspect.formatannotation(_unwrap_annotated(ret))}"
     except (ValueError, TypeError):
         return f"{name}()"
-    s = _OBJECT_ADDR_RE.sub(">", f"{name}{sig}")
+
+    # Format with proper line breaks for long signatures
+    params_str = _format_params(params, _MAX_ONELINER - len(name) - len(ret_str))
+    s = f"{name}{params_str}{ret_str}"
+    s = _OBJECT_ADDR_RE.sub(">", s)
     return _QUOTED_TYPE_RE.sub(r"\1", s)
 
 

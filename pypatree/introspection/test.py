@@ -63,6 +63,38 @@ def test_format_signature_strips_quotes() -> None:
     assert format_signature(fn, True) == "fn(x: str, y: list[int]) -> None"
 
 
+def test_format_signature_keyword_only() -> None:
+    def fn(*, x: int, y: str) -> None:
+        assert x == 1 and y == "a"
+
+    fn(x=1, y="a")
+    assert format_signature(fn, True) == "fn(*, x: int, y: str) -> None"
+
+
+def test_format_signature_positional_only() -> None:
+    def fn(x: int, /, y: str) -> None:
+        assert x == 1 and y == "a"
+
+    fn(1, "a")
+    assert format_signature(fn, True) == "fn(x: int, /, y: str) -> None"
+
+
+def test_format_signature_all_positional_only() -> None:
+    def fn(x: int, y: str, /) -> None:
+        assert x == 1 and y == "a"
+
+    fn(1, "a")
+    assert format_signature(fn, True) == "fn(x: int, y: str, /) -> None"
+
+
+def test_format_signature_var_positional() -> None:
+    def fn(*args: int, x: str) -> None:
+        assert args == (1, 2) and x == "a"
+
+    fn(1, 2, x="a")
+    assert format_signature(fn, True) == "fn(*args: int, x: str) -> None"
+
+
 def test_get_module_items_import_error() -> None:
     items = get_module_items("nonexistent.module.xyz", None, show_defaults=True)
     assert items == []
