@@ -26,7 +26,7 @@ def safe_import(modname: str) -> Optional[ModuleType]:
 _OBJECT_ADDR_RE = re.compile(r" at 0x[0-9a-fA-F]+>")
 
 
-def format_signature(obj: Union[Callable, type]) -> str:
+def format_signature(obj: Union[Callable, type], show_defaults: bool) -> str:
     """Format function or class with full signature."""
     name = getattr(obj, "__name__", str(obj))
     try:
@@ -36,6 +36,12 @@ def format_signature(obj: Union[Callable, type]) -> str:
             sig = sig.replace(parameters=params)
         else:
             sig = inspect.signature(obj)
+        if not show_defaults:
+            params = [
+                p.replace(default=inspect.Parameter.empty)
+                for p in sig.parameters.values()
+            ]
+            sig = sig.replace(parameters=params)
     except (ValueError, TypeError):
         return f"{name}()"
     return _OBJECT_ADDR_RE.sub(">", f"{name}{sig}")
@@ -54,7 +60,9 @@ def get_module_docstring(modname: str, short: bool = True) -> Optional[str]:
     return doc.strip()
 
 
-def get_module_items(modname: str, exclude: Optional[str] = None) -> list[str]:
+def get_module_items(
+    modname: str, exclude: Optional[str], show_defaults: bool
+) -> list[str]:
     """Extract public functions and classes with signatures from a module."""
     pattern = re.compile(exclude) if exclude else None
     mod = safe_import(modname)
@@ -71,6 +79,6 @@ def get_module_items(modname: str, exclude: Optional[str] = None) -> list[str]:
         if getattr(obj, "__module__", None) != modname:
             continue
         if inspect.isfunction(obj) or inspect.isclass(obj):
-            items.append(format_signature(obj))
+            items.append(format_signature(obj, show_defaults=show_defaults))
 
     return sorted(items)

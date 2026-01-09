@@ -32,3 +32,6 @@ class Config:
 
     docstrings: DocstringMode = DocstringMode.short
     """Show module docstrings: none, short (first line), or full."""
+
+    show_defaults: bool = False
+    """Show default argument values in signatures."""

@@ -19,7 +19,10 @@ def get_subtree(tree: Tree, path: list[str]) -> Optional[Tree]:
 
 
 def build_tree(
-    submods: list[str], pkg_name: str, exclude: Optional[str] = None
+    submods: list[str],
+    pkg_name: str,
+    exclude: Optional[str],
+    show_defaults: bool,
 ) -> Tree:
     """Build nested tree from flat module list."""
     log.debug("Building tree for %s from %d submodules", pkg_name, len(submods))
@@ -27,14 +30,18 @@ def build_tree(
 
     for modname in sorted(submods):
         if modname == pkg_name:
-            tree["__items__"] = get_module_items(modname, exclude=exclude)
+            tree["__items__"] = get_module_items(
+                modname, exclude=exclude, show_defaults=show_defaults
+            )
             continue
 
         parts = modname[len(pkg_name) + 1 :].split(".")
         node = tree
         for part in parts:
             node = node.setdefault(part, {})
-        node["__items__"] = get_module_items(modname, exclude=exclude)
+        node["__items__"] = get_module_items(
+            modname, exclude=exclude, show_defaults=show_defaults
+        )
 
     log.debug("Tree built with %d top-level entries", len(tree))
     return tree

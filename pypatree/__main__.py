@@ -14,7 +14,7 @@ def run(cfg: Config) -> None:
         if cfg.scope and not cfg.scope.startswith(pkg_name):
             continue
 
-        tree = build_tree(submods, pkg_name, cfg.exclude)
+        tree = build_tree(submods, pkg_name, cfg.exclude, cfg.show_defaults)
         display_name = pkg_name
 
         if cfg.scope and cfg.scope != pkg_name:
