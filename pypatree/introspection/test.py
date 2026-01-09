@@ -54,6 +54,15 @@ def test_format_signature_unwraps_nested_annotated() -> None:
     assert format_signature(fn, True) == "fn(x: list[str]) -> None"
 
 
+def test_format_signature_strips_quotes() -> None:
+    # Simulates stringified annotations from 'from __future__ import annotations'
+    def fn(x: "str", y: "list[int]") -> "None":  # noqa: F821
+        assert isinstance(x, str) and isinstance(y, list)
+
+    fn("a", [1])
+    assert format_signature(fn, True) == "fn(x: str, y: list[int]) -> None"
+
+
 def test_get_module_items_import_error() -> None:
     items = get_module_items("nonexistent.module.xyz", None, show_defaults=True)
     assert items == []

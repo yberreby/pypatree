@@ -24,6 +24,7 @@ def safe_import(modname: str) -> Optional[ModuleType]:
 
 
 _OBJECT_ADDR_RE = re.compile(r" at 0x[0-9a-fA-F]+>")
+_QUOTED_TYPE_RE = re.compile(r"'([^']+)'")
 
 
 def _unwrap_annotated(annotation: type) -> type:
@@ -78,7 +79,8 @@ def format_signature(obj: Union[Callable, type], show_defaults: bool) -> str:
         sig = sig.replace(parameters=_simplify_params(params, show_defaults))
     except (ValueError, TypeError):
         return f"{name}()"
-    return _OBJECT_ADDR_RE.sub(">", f"{name}{sig}")
+    s = _OBJECT_ADDR_RE.sub(">", f"{name}{sig}")
+    return _QUOTED_TYPE_RE.sub(r"\1", s)
 
 
 def get_module_docstring(modname: str, short: bool = True) -> Optional[str]:
