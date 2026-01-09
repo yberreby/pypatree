@@ -1,5 +1,6 @@
 import sys
 import types
+from typing import Annotated
 from unittest.mock import patch
 
 from pypatree.config import DEFAULT_EXCLUDE
@@ -12,7 +13,14 @@ def test_format_signature_function() -> None:
         return True
 
     assert example("a") is True
-    assert format_signature(example) == "example(x: str, y: int = 1) -> bool"
+    assert (
+        format_signature(example, show_defaults=True)
+        == "example(x: str, y: int = 1) -> bool"
+    )
+    assert (
+        format_signature(example, show_defaults=False)
+        == "example(x: str, y: int) -> bool"
+    )
 
 
 def test_format_signature_class() -> None:
@@ -21,21 +29,79 @@ def test_format_signature_class() -> None:
             self.name = name
 
     assert Example("test").name == "test"
-    assert format_signature(Example) == "Example(name: str) -> None"
+    assert format_signature(Example, show_defaults=True) == "Example(name: str) -> None"
 
 
 def test_format_signature_fallback() -> None:
-    result = format_signature(print)
-    assert result == "print()"
+    assert format_signature(print, show_defaults=True) == "print()"
+
+
+def test_format_signature_unwraps_annotated() -> None:
+    def fn(x: Annotated[str, "metadata"]) -> None:
+        assert isinstance(x, str)
+
+    fn("test")
+    assert format_signature(fn, True) == "fn(x: str) -> None"
+
+
+def test_format_signature_unwraps_nested_annotated() -> None:
+    from typing import List
+
+    def fn(x: List[Annotated[str, "meta"]]) -> None:
+        assert x == ["a"]
+
+    fn(["a"])
+    assert format_signature(fn, True) == "fn(x: list[str]) -> None"
+
+
+def test_format_signature_strips_quotes() -> None:
+    # Simulates stringified annotations from 'from __future__ import annotations'
+    def fn(x: "str", y: "list[int]") -> "None":  # noqa: F821
+        assert isinstance(x, str) and isinstance(y, list)
+
+    fn("a", [1])
+    assert format_signature(fn, True) == "fn(x: str, y: list[int]) -> None"
+
+
+def test_format_signature_keyword_only() -> None:
+    def fn(*, x: int, y: str) -> None:
+        assert x == 1 and y == "a"
+
+    fn(x=1, y="a")
+    assert format_signature(fn, True) == "fn(*, x: int, y: str) -> None"
+
+
+def test_format_signature_positional_only() -> None:
+    def fn(x: int, /, y: str) -> None:
+        assert x == 1 and y == "a"
+
+    fn(1, "a")
+    assert format_signature(fn, True) == "fn(x: int, /, y: str) -> None"
+
+
+def test_format_signature_all_positional_only() -> None:
+    def fn(x: int, y: str, /) -> None:
+        assert x == 1 and y == "a"
+
+    fn(1, "a")
+    assert format_signature(fn, True) == "fn(x: int, y: str, /) -> None"
+
+
+def test_format_signature_var_positional() -> None:
+    def fn(*args: int, x: str) -> None:
+        assert args == (1, 2) and x == "a"
+
+    fn(1, 2, x="a")
+    assert format_signature(fn, True) == "fn(*args: int, x: str) -> None"
 
 
 def test_get_module_items_import_error() -> None:
-    items = get_module_items("nonexistent.module.xyz")
+    items = get_module_items("nonexistent.module.xyz", None, show_defaults=True)
     assert items == []
 
 
 def test_get_module_items_excludes_test_functions() -> None:
-    items = get_module_items("pypatree.introspection.test", exclude=DEFAULT_EXCLUDE)
+    items = get_module_items("pypatree.introspection.test", DEFAULT_EXCLUDE, True)
     assert not any("test_" in i for i in items)
 
 
@@ -73,7 +139,7 @@ def test_format_signature_strips_memory_addresses() -> None:
         assert x is sentinel
 
     fn()
-    sig = format_signature(fn)
+    sig = format_signature(fn, show_defaults=True)
     assert "0x" not in sig
     assert "object>" in sig
 

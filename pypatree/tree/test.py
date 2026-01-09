@@ -23,22 +23,22 @@ def test_get_subtree_not_found() -> None:
 
 
 def test_build_tree_type() -> None:
-    tree = build_tree(["pkg"], "pkg", exclude=None)
+    tree = build_tree(["pkg"], "pkg", None, True)
     assert isinstance(tree, dict)
 
 
 def test_build_tree_empty() -> None:
-    tree = build_tree([], "pkg", exclude=None)
+    tree = build_tree([], "pkg", None, True)
     assert tree == {}
 
 
 def test_build_tree_root_items() -> None:
-    tree = build_tree(["pkg"], "pkg", exclude=None)
+    tree = build_tree(["pkg"], "pkg", None, True)
     assert "__items__" in tree
 
 
 def test_build_tree_nested_path() -> None:
-    tree = build_tree(["pkg", "pkg.a.b.c"], "pkg", exclude=None)
+    tree = build_tree(["pkg", "pkg.a.b.c"], "pkg", None, True)
     assert "a" in tree
     assert "b" in tree["a"]
     assert "c" in tree["a"]["b"]
