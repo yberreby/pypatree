@@ -3,7 +3,7 @@ import inspect
 import logging
 import re
 from types import ModuleType
-from typing import Callable, Optional, Union
+from typing import Annotated, Callable, Optional, Union, get_args, get_origin
 
 log = logging.getLogger(__name__)
 
@@ -26,6 +26,45 @@ def safe_import(modname: str) -> Optional[ModuleType]:
 _OBJECT_ADDR_RE = re.compile(r" at 0x[0-9a-fA-F]+>")
 
 
+def _unwrap_annotated(annotation: type) -> type:
+    """Recursively strip Annotated wrappers from a type.
+
+    Annotated[T, meta...] -> T
+    List[Annotated[T, meta]] -> List[T]
+    Dict[K, Annotated[V, meta]] -> Dict[K, V]
+    """
+    origin = get_origin(annotation)
+
+    # Annotated[T, ...] -> recurse into T
+    if origin is Annotated:
+        args = get_args(annotation)
+        assert args, "Annotated must have at least one arg"
+        return _unwrap_annotated(args[0])
+
+    # Generic like List[X], Dict[K, V] -> rebuild with unwrapped args
+    if origin is not None:
+        args = get_args(annotation)
+        if args:
+            return origin[tuple(_unwrap_annotated(a) for a in args)]
+
+    # Plain type like str, int -> return as-is
+    return annotation
+
+
+def _simplify_params(
+    params: list[inspect.Parameter], show_defaults: bool
+) -> list[inspect.Parameter]:
+    """Unwrap Annotated types and optionally strip defaults."""
+    result = []
+    for p in params:
+        ann = p.annotation
+        if ann is not inspect.Parameter.empty:
+            ann = _unwrap_annotated(ann)
+        default = p.default if show_defaults else inspect.Parameter.empty
+        result.append(p.replace(annotation=ann, default=default))
+    return result
+
+
 def format_signature(obj: Union[Callable, type], show_defaults: bool) -> str:
     """Format function or class with full signature."""
     name = getattr(obj, "__name__", str(obj))
@@ -33,15 +72,10 @@ def format_signature(obj: Union[Callable, type], show_defaults: bool) -> str:
         if inspect.isclass(obj):
             sig = inspect.signature(obj.__init__)
             params = [p for k, p in sig.parameters.items() if k != "self"]
-            sig = sig.replace(parameters=params)
         else:
             sig = inspect.signature(obj)
-        if not show_defaults:
-            params = [
-                p.replace(default=inspect.Parameter.empty)
-                for p in sig.parameters.values()
-            ]
-            sig = sig.replace(parameters=params)
+            params = list(sig.parameters.values())
+        sig = sig.replace(parameters=_simplify_params(params, show_defaults))
     except (ValueError, TypeError):
         return f"{name}()"
     return _OBJECT_ADDR_RE.sub(">", f"{name}{sig}")

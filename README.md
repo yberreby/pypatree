@@ -18,12 +18,8 @@ pypatree  pypatree - Pretty-print a project's module tree.
 │   ├── main() -> None
 │   └── run(cfg: pypatree.config.Config) -> None
 ├── config  Configuration types for pypatree.
-│   ├── Config(scope: Annotated[Optional[str], Positional, _ArgConfig(name=None,
-│   │   metavar='[MODULE]', help=None, help_behavior_hint=None, aliases=None, 
-│   │   prefix_name=None, constructor_factory=None, 
-│   │   default=<NonpropagatingMissingType id='4314077360'>)], exclude: 
-│   │   Optional[str], docstrings: pypatree.config.DocstringMode, show_defaults:
-│   │   bool) -> None
+│   ├── Config(scope: Optional[str], exclude: Optional[str], docstrings: 
+│   │   pypatree.config.DocstringMode, show_defaults: bool) -> None
 │   └── DocstringMode(*args, **kwargs)
 ├── discovery
 │   └── get_packages(exclude: Optional[str]) -> dict[str, list[str]]

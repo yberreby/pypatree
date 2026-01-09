@@ -1,5 +1,6 @@
 import sys
 import types
+from typing import Annotated
 from unittest.mock import patch
 
 from pypatree.config import DEFAULT_EXCLUDE
@@ -33,6 +34,24 @@ def test_format_signature_class() -> None:
 
 def test_format_signature_fallback() -> None:
     assert format_signature(print, show_defaults=True) == "print()"
+
+
+def test_format_signature_unwraps_annotated() -> None:
+    def fn(x: Annotated[str, "metadata"]) -> None:
+        assert isinstance(x, str)
+
+    fn("test")
+    assert format_signature(fn, True) == "fn(x: str) -> None"
+
+
+def test_format_signature_unwraps_nested_annotated() -> None:
+    from typing import List
+
+    def fn(x: List[Annotated[str, "meta"]]) -> None:
+        assert x == ["a"]
+
+    fn(["a"])
+    assert format_signature(fn, True) == "fn(x: list[str]) -> None"
 
 
 def test_get_module_items_import_error() -> None:
