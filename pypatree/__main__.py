@@ -21,7 +21,16 @@ def _setup_logging(verbose: bool) -> None:
 
 def run(cfg: Config) -> None:
     """Display module tree with public functions/classes."""
-    for pkg_name, submods in sorted(get_packages(cfg.exclude).items()):
+    packages = get_packages(cfg.exclude)
+    if not packages:
+        print(
+            "No packages found. Ensure you're in a directory with an editable install.",
+            file=sys.stderr,
+        )
+        print("Run with --verbose for debug output.", file=sys.stderr)
+        return
+
+    for pkg_name, submods in sorted(packages.items()):
         if not submods:
             continue
         if cfg.scope and not cfg.scope.startswith(pkg_name):
