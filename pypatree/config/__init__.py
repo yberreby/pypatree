@@ -35,3 +35,6 @@ class Config:
 
     show_defaults: bool = False
     """Show default argument values in signatures."""
+
+    verbose: bool = False
+    """Enable debug logging to stderr."""

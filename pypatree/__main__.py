@@ -1,9 +1,22 @@
+import logging
+import sys
+
 import tyro
 
 from .config import Config
 from .discovery import get_packages
 from .display import print_tree
 from .tree import build_tree, get_subtree
+
+
+def _setup_logging(verbose: bool) -> None:
+    """Configure logging to stderr if verbose."""
+    if verbose:
+        logging.basicConfig(
+            level=logging.DEBUG,
+            format="%(name)s: %(message)s",
+            stream=sys.stderr,
+        )
 
 
 def run(cfg: Config) -> None:
@@ -30,6 +43,7 @@ def main() -> None:
     cfg = tyro.cli(
         Config, description="Display module tree with public functions/classes."
     )
+    _setup_logging(cfg.verbose)
     run(cfg)
 
 
