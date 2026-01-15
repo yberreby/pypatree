@@ -23,6 +23,7 @@ pypatree  pypatree - Pretty-print a project's module tree.
 │   │       exclude: Optional[str],
 │   │       docstrings: pypatree.config.DocstringMode,
 │   │       show_defaults: bool,
+│   │       verbose: bool,
 │   │   ) -> None
 │   └── DocstringMode(*args, **kwargs)
 ├── discovery
@@ -77,6 +78,8 @@ Display module tree with public functions/classes.
 │     short)                                                                 │
 │ --show-defaults, --no-show-defaults                                        │
 │     Show default argument values in signatures. (default: False)           │
+│ --verbose, --no-verbose                                                    │
+│     Enable debug logging to stderr. (default: False)                       │
 ╰────────────────────────────────────────────────────────────────────────────╯
 ```
 
