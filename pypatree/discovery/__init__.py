@@ -12,10 +12,25 @@ log = logging.getLogger(__name__)
 
 
 def _find_packages_in_dir(source_path: str) -> list[str]:
-    """Find top-level Python packages in a source directory."""
-    # Detect src-layout vs flat layout
+    """Find top-level Python packages in a source directory.
+
+    Handles three layouts:
+    1. src-as-package: src/__init__.py exists -> src IS the package
+    2. src-layout: src/mypkg/__init__.py -> search inside src/
+    3. flat-layout: mypkg/__init__.py -> search in root
+    """
     src_dir = os.path.join(source_path, "src")
+    src_init = os.path.join(src_dir, "__init__.py")
+
+    # Case 1: src itself is a package
+    if os.path.isfile(src_init):
+        log.debug("src/__init__.py found - treating 'src' as package")
+        return ["src"]
+
+    # Case 2: src-layout (src/ exists but no __init__.py)
+    # Case 3: flat-layout (no src/ directory)
     search_dir = src_dir if os.path.isdir(src_dir) else source_path
+    log.debug("Searching for packages in %s", search_dir)
 
     packages = []
     for name in os.listdir(search_dir):

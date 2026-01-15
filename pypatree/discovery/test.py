@@ -1,11 +1,13 @@
 """Tests for discovery module - uses pypatree itself as test subject."""
 
+import os
 import re
+import tempfile
 from unittest.mock import patch
 
 from pypatree.config import DEFAULT_EXCLUDE
 
-from . import _get_local_packages, _matches_exclude, get_packages
+from . import _find_packages_in_dir, _get_local_packages, _matches_exclude, get_packages
 
 
 def test_matches_exclude_exact_test() -> None:
@@ -71,3 +73,41 @@ def test_get_packages_skips_unimportable() -> None:
     with patch("pypatree.discovery.safe_import", return_value=None):
         result = get_packages()
     assert result == {}
+
+
+def test_find_packages_src_as_package() -> None:
+    """When src/ itself is a package (has __init__.py), detect it."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        src_dir = os.path.join(tmpdir, "src")
+        os.makedirs(src_dir)
+        # src/__init__.py exists -> src IS the package
+        with open(os.path.join(src_dir, "__init__.py"), "w") as f:
+            f.write("")
+        with open(os.path.join(src_dir, "module.py"), "w") as f:
+            f.write("")
+        packages = _find_packages_in_dir(tmpdir)
+        assert "src" in packages
+
+
+def test_find_packages_src_layout() -> None:
+    """Standard src-layout: src/mypkg/ with __init__.py inside."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # src/mypkg/__init__.py (no src/__init__.py)
+        mypkg_dir = os.path.join(tmpdir, "src", "mypkg")
+        os.makedirs(mypkg_dir)
+        with open(os.path.join(mypkg_dir, "__init__.py"), "w") as f:
+            f.write("")
+        packages = _find_packages_in_dir(tmpdir)
+        assert "mypkg" in packages
+        assert "src" not in packages
+
+
+def test_find_packages_flat_layout() -> None:
+    """Flat layout: mypkg/ directly in project root."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        mypkg_dir = os.path.join(tmpdir, "mypkg")
+        os.makedirs(mypkg_dir)
+        with open(os.path.join(mypkg_dir, "__init__.py"), "w") as f:
+            f.write("")
+        packages = _find_packages_in_dir(tmpdir)
+        assert "mypkg" in packages
