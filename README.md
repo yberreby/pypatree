@@ -274,7 +274,7 @@ httpx
 │   ) -> None
 ├── WriteError(message: str, *, request: Request | None) -> None
 ├── WriteTimeout(message: str, *, request: Request | None) -> None
-├── codes(*args, **kwds)
+├── codes(*args, **kwargs)
 ├── create_ssl_context(
 │       verify: ssl.SSLContext | str | bool,
 │       cert: CertTypes | None,
@@ -448,7 +448,7 @@ httpx
 │   │       response: Response,
 │   │       start: float,
 │   │   ) -> None
-│   ├── ClientState(*args, **kwds)
+│   ├── ClientState(*args, **kwargs)
 │   └── UseClientDefault(*args, **kwargs)
 ├── _config
 │   └── UnsetType(*args, **kwargs)
