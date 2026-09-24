@@ -12,6 +12,11 @@ uv add --dev pypatree
 uv run pypatree
 ```
 
+Pass a dotted package or module name, such as `uv run pypatree mypkg.parsers`, to
+inspect that namespace without importing unrelated submodules. Python still runs
+the requested module's parent package initializers. Unknown and excluded scopes
+raise an error.
+
 ```
 {{PYPATREE_OUTPUT}}
 ```

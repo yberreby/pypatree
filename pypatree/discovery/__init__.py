@@ -1,9 +1,11 @@
+import importlib
 import importlib.metadata as meta
 import json
 import logging
 import os
 import pkgutil
 import re
+from collections.abc import Iterable
 from typing import Optional
 
 from pypatree.introspection import safe_import
@@ -76,12 +78,56 @@ def _matches_exclude(name: str, pattern: Optional[re.Pattern[str]]) -> bool:
     return any(pattern.search(seg) for seg in name.split("."))
 
 
-def get_packages(exclude: Optional[str] = None) -> dict[str, list[str]]:
+def _scoped_submodules(pkg_name: str, pattern: Optional[re.Pattern[str]]) -> list[str]:
+    pkg = importlib.import_module(pkg_name)
+    submods = [pkg_name]
+    if not hasattr(pkg, "__path__"):
+        return submods
+
+    def walk(package_name: str, paths: Iterable[str]) -> None:
+        for module in pkgutil.iter_modules(paths, f"{package_name}."):
+            if _matches_exclude(module.name[len(pkg_name) + 1 :], pattern):
+                log.debug("Excluding module: %s", module.name)
+                continue
+            submods.append(module.name)
+            if module.ispkg:
+                child = importlib.import_module(module.name)
+                walk(module.name, child.__path__)
+
+    walk(pkg_name, pkg.__path__)
+    return submods
+
+
+def get_packages(
+    exclude: Optional[str] = None, scope: Optional[str] = None
+) -> dict[str, list[str]]:
     """Find importable packages in CWD and their submodules."""
     pattern = re.compile(exclude) if exclude else None
     result: dict[str, list[str]] = {}
+    local_packages = _get_local_packages()
 
-    for pkg_name in _get_local_packages():
+    if scope:
+        roots = [
+            name
+            for name in local_packages
+            if scope == name or scope.startswith(f"{name}.")
+        ]
+        if not roots:
+            raise ValueError(f"Scope {scope!r} is not in a local editable package")
+        root = max(roots, key=len)
+        if _matches_exclude(scope[len(root) + 1 :], pattern) and scope != root:
+            raise ValueError(f"Scope {scope!r} is excluded by --exclude {exclude!r}")
+        try:
+            result[scope] = _scoped_submodules(scope, pattern)
+        except ModuleNotFoundError as error:
+            if error.name and (
+                scope == error.name or scope.startswith(f"{error.name}.")
+            ):
+                raise ValueError(f"Scope {scope!r} does not exist") from error
+            raise
+        return result
+
+    for pkg_name in local_packages:
         pkg = safe_import(pkg_name)
         if pkg is None:
             continue

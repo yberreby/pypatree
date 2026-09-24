@@ -12,6 +12,11 @@ uv add --dev pypatree
 uv run pypatree
 ```
 
+Pass a dotted package or module name, such as `uv run pypatree mypkg.parsers`, to
+inspect that namespace without importing unrelated submodules. Python still runs
+the requested module's parent package initializers. Unknown and excluded scopes
+raise an error.
+
 ```
 pypatree  pypatree - Pretty-print a project's module tree.
 ├── __main__
@@ -27,7 +32,10 @@ pypatree  pypatree - Pretty-print a project's module tree.
 │   │   ) -> None
 │   └── DocstringMode(*args, **kwargs)
 ├── discovery
-│   └── get_packages(exclude: Optional[str]) -> dict[str, list[str]]
+│   └── get_packages(
+│           exclude: Optional[str],
+│           scope: Optional[str],
+│       ) -> dict[str, list[str]]
 ├── display
 │   ├── print_tree(
 │   │       pkg_name: str,
@@ -266,7 +274,7 @@ httpx
 │   ) -> None
 ├── WriteError(message: str, *, request: Request | None) -> None
 ├── WriteTimeout(message: str, *, request: Request | None) -> None
-├── codes(*args, **kwargs)
+├── codes(*args, **kwds)
 ├── create_ssl_context(
 │       verify: ssl.SSLContext | str | bool,
 │       cert: CertTypes | None,
@@ -440,7 +448,7 @@ httpx
 │   │       response: Response,
 │   │       start: float,
 │   │   ) -> None
-│   ├── ClientState(*args, **kwargs)
+│   ├── ClientState(*args, **kwds)
 │   └── UseClientDefault(*args, **kwargs)
 ├── _config
 │   └── UnsetType(*args, **kwargs)

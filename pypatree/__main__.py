@@ -6,7 +6,7 @@ import tyro
 from .config import Config
 from .discovery import get_packages
 from .display import print_tree
-from .tree import build_tree, get_subtree
+from .tree import build_tree
 
 
 def _setup_logging(verbose: bool) -> None:
@@ -21,7 +21,7 @@ def _setup_logging(verbose: bool) -> None:
 
 def run(cfg: Config) -> None:
     """Display module tree with public functions/classes."""
-    packages = get_packages(cfg.exclude)
+    packages = get_packages(cfg.exclude, scope=cfg.scope)
     if not packages:
         print(
             "No packages found. Ensure you're in a directory with an editable install.",
@@ -33,19 +33,8 @@ def run(cfg: Config) -> None:
     for pkg_name, submods in sorted(packages.items()):
         if not submods:
             continue
-        if cfg.scope and not cfg.scope.startswith(pkg_name):
-            continue
-
         tree = build_tree(submods, pkg_name, cfg.exclude, cfg.show_defaults)
-        display_name = pkg_name
-
-        if cfg.scope and cfg.scope != pkg_name:
-            subtree = get_subtree(tree, cfg.scope[len(pkg_name) + 1 :].split("."))
-            if subtree is None:
-                continue
-            tree, display_name = subtree, cfg.scope
-
-        print_tree(display_name, tree, cfg)
+        print_tree(pkg_name, tree, cfg)
 
 
 def main() -> None:
