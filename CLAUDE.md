@@ -18,6 +18,10 @@ We have GitHub Actions, see @.github/workflows
 
 No matter what, the command `uv run just` is always good to run to ensure the repo is in a good state.
 
+Lasting pypatree fixes may be pushed to `main` without publishing a new PyPI version
+[user, 2026-09-23: "if pypatree needs lasting fixes you can push to its main branch
+(Without necessarily publishing new pypi version)"].
+
 ## Coding practices
 
 Do not allow ugliness to creep in.
