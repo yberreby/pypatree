@@ -27,6 +27,7 @@ Run `pypatree --help` for options:
 ```
 
 Example on [{{SHOWCASE_NAME}}]({{SHOWCASE_URL}}):
+Source: commit `{{SHOWCASE_REVISION}}`, Python {{SHOWCASE_PYTHON}}.
 ```
 {{SHOWCASE_OUTPUT}}
 ```

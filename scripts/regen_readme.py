@@ -1,46 +1,44 @@
 #!/usr/bin/env python
 """Generate README.md from README.md.in template."""
 
-import subprocess
 import sys
 
-from lib import ROOT, run_pypatree_on_repo
+from lib import PYTHON_VERSION, ROOT, run, run_pypatree_on_repo
 
 TEMPLATE = ROOT / "README.md.in"
 OUTPUT = ROOT / "README.md"
 
-# External repo to showcase (easily configurable)
 SHOWCASE_REPO = "https://github.com/encode/httpx.git"
+SHOWCASE_REVISION = "b5addb64f0161ff6bfe94c124ef76f6a1fba5254"
+SHOWCASE_CONSTRAINTS = ROOT / "scripts" / "showcase-constraints.txt"
 
 
 def generate() -> str:
     template = TEMPLATE.read_text()
 
     # Help output
-    help_output = subprocess.run(
-        ["uv", "run", "pypatree", "--help"],
-        capture_output=True,
-        text=True,
-        cwd=ROOT,
-    ).stdout.strip()
+    help_output = (
+        run("uv", "run", "pypatree", "--help", cwd=ROOT).stdout.decode().strip()
+    )
     template = template.replace("{{HELP_OUTPUT}}", help_output)
 
     # Self output
-    self_output = subprocess.run(
-        ["uv", "run", "pypatree"],
-        capture_output=True,
-        text=True,
-        cwd=ROOT,
-    ).stdout.strip()
+    self_output = run("uv", "run", "pypatree", cwd=ROOT).stdout.decode().strip()
     template = template.replace("{{PYPATREE_OUTPUT}}", self_output)
 
     # External repo showcase
     if "{{SHOWCASE_OUTPUT}}" in template:
         name = SHOWCASE_REPO.split("/")[-1].removesuffix(".git")
         url = SHOWCASE_REPO.removesuffix(".git")
-        output = run_pypatree_on_repo(SHOWCASE_REPO).strip()
+        output = run_pypatree_on_repo(
+            SHOWCASE_REPO,
+            revision=SHOWCASE_REVISION,
+            constraints=SHOWCASE_CONSTRAINTS,
+        ).strip()
         template = template.replace("{{SHOWCASE_NAME}}", name)
         template = template.replace("{{SHOWCASE_URL}}", url)
+        template = template.replace("{{SHOWCASE_REVISION}}", SHOWCASE_REVISION)
+        template = template.replace("{{SHOWCASE_PYTHON}}", PYTHON_VERSION)
         template = template.replace("{{SHOWCASE_OUTPUT}}", output)
 
     return template

@@ -92,6 +92,7 @@ Display module tree with public functions/classes.
 ```
 
 Example on [httpx](https://github.com/encode/httpx):
+Source: commit `b5addb64f0161ff6bfe94c124ef76f6a1fba5254`, Python 3.9.25.
 ```
 httpx
 ├── ASGITransport(
