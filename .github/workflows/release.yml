@@ -5,17 +5,12 @@ on:
     tags:
       - "v*"
 
+permissions:
+  contents: read
+
 jobs:
   check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-
-      - uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
-
-      - run: uv run just check
+    uses: ./.github/workflows/checks.yml
 
   publish:
     needs: check
@@ -26,9 +21,8 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v5
-
       - uses: astral-sh/setup-uv@v5
-
-      - run: uv build
-
+      - name: Check release tag
+        run: test "$GITHUB_REF_NAME" = "v$(uv version --short)"
+      - run: uv run just package-check
       - run: uv publish

@@ -38,25 +38,22 @@ def lock_showcase() -> None:
         )
 
 
-def generate() -> str:
-    template = TEMPLATE.read_text()
-
-    # Help output
-    help_output = (
-        run("uv", "run", "pypatree", "--help", cwd=ROOT).stdout.decode().strip()
-    )
-    template = template.replace("{{HELP_OUTPUT}}", help_output)
-
-    # Self output
-    self_output = run("uv", "run", "pypatree", cwd=ROOT).stdout.decode().strip()
-    template = template.replace("{{PYPATREE_OUTPUT}}", self_output)
-
-    flat_output = (
-        run("uv", "run", "pypatree", "pypatree.introspection", "--flat", cwd=ROOT)
+def _pypatree_output(*args: str) -> str:
+    return (
+        run("uv", "run", "--python", PYTHON_VERSION, "pypatree", *args, cwd=ROOT)
         .stdout.decode()
         .strip()
     )
-    template = template.replace("{{FLAT_OUTPUT}}", flat_output)
+
+
+def generate() -> str:
+    template = TEMPLATE.read_text()
+    template = template.replace("{{HELP_OUTPUT}}", _pypatree_output("--help"))
+    template = template.replace("{{PYPATREE_OUTPUT}}", _pypatree_output())
+
+    template = template.replace(
+        "{{FLAT_OUTPUT}}", _pypatree_output("pypatree.introspection", "--flat")
+    )
 
     # External repo showcase
     if "{{SHOWCASE_OUTPUT}}" in template:

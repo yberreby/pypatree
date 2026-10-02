@@ -35,7 +35,10 @@ def test_run_failure_preserves_stdout() -> None:
         run(sys.executable, "-c", "print('diagnostic on stdout'); raise SystemExit(1)")
 
 
-def test_showcase_uses_requested_revision_and_project_python(tmp_path: Path) -> None:
+def test_showcase_uses_requested_revision_and_project_python(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("UV_PYTHON", str(tmp_path / "missing-interpreter"))
     source = tmp_path / "example"
     package = source / "example"
     package.mkdir(parents=True)
