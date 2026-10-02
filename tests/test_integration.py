@@ -48,21 +48,28 @@ def test_scope_nonexistent_reports_error() -> None:
 
 
 @pytest.mark.parametrize(
-    ("scope", "expected"),
+    ("scope", "expected", "exit_code"),
     [
-        ("test_stub.branch", "leaf"),
-        ("test_stub.branch.leaf", "leaf_function"),
+        ("test_stub.branch", "leaf", 1),
+        ("test_stub.branch.leaf", "leaf_function", 0),
     ],
 )
-def test_scoped_cli_avoids_unrelated_imports(scope: str, expected: str) -> None:
+def test_scoped_cli_avoids_unrelated_imports(
+    scope: str, expected: str, exit_code: int
+) -> None:
     stub = Path(__file__).parent / "stubs" / "test_stub"
     cli = Path(sys.executable).with_name("pypatree")
     result = subprocess.run(
-        [str(cli), scope], cwd=stub, text=True, capture_output=True, check=True
+        [str(cli), scope], cwd=stub, text=True, capture_output=True, timeout=10
     )
     assert result.stdout.startswith(scope)
     assert expected in result.stdout
     assert "sibling" not in result.stdout
+    assert "Unrelated sibling was imported" not in result.stderr
+    assert result.returncode == exit_code
+    if exit_code:
+        assert "missing_dependency_for_pypatree" in result.stderr
+        assert "Output is incomplete" in result.stderr
 
 
 def test_scoped_cli_respects_package_boundaries_and_exclusions() -> None:

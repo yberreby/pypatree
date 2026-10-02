@@ -1,85 +1,75 @@
+from collections.abc import Iterator
+
 from rich.console import Console
 from rich.syntax import Syntax
 from rich.text import Text
 from rich.tree import Tree as RichTree
 
 from pypatree.config import Config, DocstringMode
-from pypatree.introspection import get_module_docstring
 from pypatree.tree import Tree
 
 _SYNTAX = Syntax("", "python", theme="one-dark", background_color="default")
 
 
-def _highlight(sig: str) -> Text:
-    """Highlight a Python signature with syntax coloring."""
-    wrapper = f"def {sig}: ..."
-    text = _SYNTAX.highlight(wrapper)
-    text.rstrip()
-    # Slice based on actual positions in plain text
-    start = len("def ")
-    end = text.plain.rfind(": ...")
-    return text[start:end]
+def _highlight(signature: str) -> Text:
+    text = _SYNTAX.highlight(f"def {signature}: ...")
+    return text[len("def ") : text.plain.rfind(": ...")]
 
 
-def _add_subtree(
-    parent: RichTree,
-    tree: Tree,
-    modpath: str,
-    cfg: Config,
-) -> None:
-    """Recursively add nodes to a rich tree."""
-    items = tree.get("__items__", [])
-    children = sorted(k for k in tree if k != "__items__")
+def _label(name: str, tree: Tree, cfg: Config) -> str:
+    if tree.failed:
+        return f"{name} [import failed]"
+    if cfg.docstrings == DocstringMode.none or not tree.docstring:
+        return name
+    docstring = tree.docstring
+    if cfg.docstrings == DocstringMode.short:
+        docstring = docstring.splitlines()[0]
+    return f"{name}  {docstring}"
 
-    for item in items:
+
+def _styled_label(name: str, tree: Tree, cfg: Config, *, style: str) -> Text:
+    content = _label(name, tree, cfg)
+    label = Text(content.replace("\n", r"\n") if cfg.flat else content)
+    label.stylize(style, 0, len(name))
+    label.stylize("red" if tree.failed else "dim", len(name))
+    return label
+
+
+def _add_subtree(parent: RichTree, tree: Tree, cfg: Config) -> None:
+    for item in tree.items:
         parent.add(_highlight(item))
+    for name, child in sorted(tree.children.items()):
+        branch = parent.add(_styled_label(name, child, cfg, style="bold blue"))
+        _add_subtree(branch, child, cfg)
 
-    for key in children:
-        child_path = f"{modpath}.{key}"
-        label = f"[bold blue]{key}[/bold blue]"
 
-        if cfg.docstrings != DocstringMode.none:
-            short = cfg.docstrings == DocstringMode.short
-            doc = get_module_docstring(child_path, short=short)
-            if doc:
-                label += f"  [dim]{doc}[/dim]"
-
-        branch = parent.add(label)
-        _add_subtree(branch, tree[key], child_path, cfg)
+def _flat_lines(name: str, tree: Tree, cfg: Config) -> Iterator[Text]:
+    yield _styled_label(name, tree, cfg, style="bold blue")
+    for item in tree.items:
+        yield _highlight(f"{name}.{item}".replace("\n", r"\n"))
+    for child_name, child in sorted(tree.children.items()):
+        yield from _flat_lines(f"{name}.{child_name}", child, cfg)
 
 
 def print_tree(pkg_name: str, tree: Tree, cfg: Config) -> None:
-    """Print a package tree using rich."""
-    console = Console()
-
-    label = f"[bold yellow]{pkg_name}[/bold yellow]"
-    if cfg.docstrings != DocstringMode.none:
-        short = cfg.docstrings == DocstringMode.short
-        doc = get_module_docstring(pkg_name, short=short)
-        if doc:
-            label += f"  [dim]{doc}[/dim]"
-
-    rich_tree = RichTree(label)
-    _add_subtree(rich_tree, tree, pkg_name, cfg)
-    console.print(rich_tree)
+    console = Console(
+        force_terminal={"auto": None, "always": True, "never": False}[cfg.color],
+        color_system=None if cfg.color == "never" else "auto",
+        no_color={"auto": None, "always": False, "never": True}[cfg.color],
+    )
+    if cfg.flat:
+        for line in _flat_lines(pkg_name, tree, cfg):
+            console.print(line, soft_wrap=True)
+        return
+    root = RichTree(_styled_label(pkg_name, tree, cfg, style="bold yellow"))
+    _add_subtree(root, tree, cfg)
+    console.print(root)
 
 
 def render_tree(tree: Tree, prefix: str = "") -> list[str]:
-    """Render tree to lines with box-drawing characters (plain text)."""
-    lines: list[str] = []
-    items = tree.get("__items__", [])
-    children = sorted(k for k in tree if k != "__items__")
-
-    for i, item in enumerate(items):
-        last = i == len(items) - 1 and not children
-        lines.append(f"{prefix}{'└── ' if last else '├── '}{item}")
-
-    for i, key in enumerate(children):
-        last = i == len(children) - 1
-        subtree = tree[key]
-
-        lines.append(f"{prefix}{'└── ' if last else '├── '}{key}")
-        ext = "    " if last else "│   "
-        lines.extend(render_tree(subtree, prefix + ext))
-
-    return lines
+    console = Console(color_system=None)
+    root = RichTree("")
+    _add_subtree(root, tree, Config(docstrings=DocstringMode.none))
+    with console.capture() as capture:
+        console.print(root)
+    return [prefix + line for line in capture.get().splitlines()[1:]]

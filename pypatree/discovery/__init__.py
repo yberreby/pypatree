@@ -1,74 +1,88 @@
-import importlib
 import importlib.metadata as meta
 import json
 import logging
-import os
 import pkgutil
 import re
 from collections.abc import Iterable
+from pathlib import Path
+from types import ModuleType
 from typing import Optional
+from urllib.parse import unquote, urlsplit
 
-from pypatree.introspection import safe_import
+from pypatree.introspection import ErrorHandler, import_module, log_error, safe_import
 
 log = logging.getLogger(__name__)
 
 
-def _find_packages_in_dir(source_path: str) -> list[str]:
-    """Find top-level Python packages in a source directory.
-
-    Handles three layouts:
-    1. src-as-package: src/__init__.py exists -> src IS the package
-    2. src-layout: src/mypkg/__init__.py -> search inside src/
-    3. flat-layout: mypkg/__init__.py -> search in root
-    """
-    src_dir = os.path.join(source_path, "src")
-    src_init = os.path.join(src_dir, "__init__.py")
-
-    # Case 1: src itself is a package
-    if os.path.isfile(src_init):
-        log.debug("src/__init__.py found - treating 'src' as package")
-        return ["src"]
-
-    # Case 2: src-layout (src/ exists but no __init__.py)
-    # Case 3: flat-layout (no src/ directory)
-    search_dir = src_dir if os.path.isdir(src_dir) else source_path
-    log.debug("Searching for packages in %s", search_dir)
-
-    packages = []
-    for name in os.listdir(search_dir):
-        if name.startswith((".", "_")):
+def _module_names(paths: Iterable[str]) -> dict[str, bool]:
+    paths = list(paths)
+    names = {module.name: module.ispkg for module in pkgutil.iter_modules(paths)}
+    for directory in paths:
+        if not Path(directory).is_dir():
             continue
-        pkg_path = os.path.join(search_dir, name)
-        init_path = os.path.join(pkg_path, "__init__.py")
-        if os.path.isdir(pkg_path) and os.path.isfile(init_path):
-            packages.append(name)
+        for child in Path(directory).iterdir():
+            if (
+                child.name not in names
+                and child.name.isidentifier()
+                and child.name != "__pycache__"
+                and child.is_dir()
+                and any(child.rglob("*.py"))
+            ):
+                names[child.name] = True
+    return names
 
-    return packages
+
+def _find_packages_in_dir(source_path: str) -> list[str]:
+    source = Path(source_path)
+    source_dirs = [source]
+    src = source / "src"
+    if src.is_dir() and not (src / "__init__.py").is_file():
+        source_dirs.append(src)
+    packages = {
+        module.name
+        for module in pkgutil.iter_modules([str(path) for path in source_dirs])
+        if module.ispkg and not module.name.startswith("_")
+    }
+    if packages:
+        return sorted(packages)
+    names = _module_names(str(path) for path in source_dirs)
+    if len(source_dirs) > 1:
+        names.pop("src", None)
+    names = {
+        name: package for name, package in names.items() if not name.startswith("_")
+    }
+    # A package project may also contain build scripts beside its packages.
+    packages = [name for name, package in names.items() if package]
+    return sorted(packages or names)
 
 
 def _get_local_packages() -> list[str]:
     """Find packages installed from current directory via PEP 610 metadata."""
-    cwd_url = "file://" + os.getcwd()
+    cwd = Path.cwd().resolve()
     packages = []
 
-    log.debug("Looking for packages installed from %s", cwd_url)
+    log.debug("Looking for packages installed from %s", cwd)
 
     for dist in meta.distributions():
-        for f in dist.files or []:
-            if f.name == "direct_url.json":
-                data = json.loads(f.read_text())
-                url = data.get("url", "").rstrip("/")
-                # Must be EXACTLY cwd, not a subdirectory
-                if url == cwd_url and data.get("dir_info", {}).get("editable"):
-                    assert url.startswith("file://"), f"Expected file:// URL, got {url}"
-                    source_path = url.removeprefix("file://")
-                    for pkg in _find_packages_in_dir(source_path):
-                        log.debug("Found local package: %s", pkg)
-                        packages.append(pkg)
-                break
+        direct_url = dist.read_text("direct_url.json")
+        if direct_url is None:
+            continue
+        data = json.loads(direct_url)
+        if not data.get("dir_info", {}).get("editable", False):
+            continue
+        url = urlsplit(data["url"])
+        assert url.scheme == "file", f"Expected local editable URL, got {data['url']}"
+        source_path = Path(unquote(url.path)).resolve()
+        if source_path == cwd:
+            top_level = dist.read_text("top_level.txt")
+            packages.extend(
+                top_level.split()
+                if top_level
+                else _find_packages_in_dir(str(source_path))
+            )
 
     log.debug("Local packages: %s", packages)
-    return packages
+    return sorted(set(packages))
 
 
 def _matches_exclude(name: str, pattern: Optional[re.Pattern[str]]) -> bool:
@@ -78,28 +92,50 @@ def _matches_exclude(name: str, pattern: Optional[re.Pattern[str]]) -> bool:
     return any(pattern.search(seg) for seg in name.split("."))
 
 
-def _scoped_submodules(pkg_name: str, pattern: Optional[re.Pattern[str]]) -> list[str]:
-    pkg = importlib.import_module(pkg_name)
+def _submodules(
+    pkg: ModuleType, pattern: Optional[re.Pattern[str]], on_error: ErrorHandler
+) -> list[str]:
+    pkg_name = pkg.__name__
     submods = [pkg_name]
     if not hasattr(pkg, "__path__"):
         return submods
 
-    def walk(package_name: str, paths: Iterable[str]) -> None:
-        for module in pkgutil.iter_modules(paths, f"{package_name}."):
-            if _matches_exclude(module.name[len(pkg_name) + 1 :], pattern):
-                log.debug("Excluding module: %s", module.name)
+    def walk(
+        package_name: str, paths: Iterable[str], *, ancestors: frozenset[Path]
+    ) -> None:
+        fresh_paths: dict[Path, str] = {}
+        for path in paths:
+            resolved = Path(path).resolve()
+            if resolved in ancestors:
+                on_error(
+                    f"Recursive package path while inspecting {package_name!r}: {resolved}"
+                )
+            else:
+                fresh_paths[resolved] = path
+        ancestors = ancestors.union(fresh_paths)
+        for name, is_package in sorted(_module_names(fresh_paths.values()).items()):
+            modname = f"{package_name}.{name}"
+            if pattern and pattern.search(name):
+                log.debug("Excluding module: %s", modname)
                 continue
-            submods.append(module.name)
-            if module.ispkg:
-                child = importlib.import_module(module.name)
-                walk(module.name, child.__path__)
+            if is_package:
+                child = safe_import(modname, on_error=on_error)
+                if child is None:
+                    continue
+                submods.append(modname)
+                walk(modname, child.__path__, ancestors=ancestors)
+            else:
+                submods.append(modname)
 
-    walk(pkg_name, pkg.__path__)
+    walk(pkg_name, pkg.__path__, ancestors=frozenset())
     return submods
 
 
 def get_packages(
-    exclude: Optional[str] = None, scope: Optional[str] = None
+    exclude: Optional[str] = None,
+    scope: Optional[str] = None,
+    *,
+    on_error: ErrorHandler = log_error,
 ) -> dict[str, list[str]]:
     """Find importable packages in CWD and their submodules."""
     pattern = re.compile(exclude) if exclude else None
@@ -118,7 +154,9 @@ def get_packages(
         if _matches_exclude(scope[len(root) + 1 :], pattern) and scope != root:
             raise ValueError(f"Scope {scope!r} is excluded by --exclude {exclude!r}")
         try:
-            result[scope] = _scoped_submodules(scope, pattern)
+            result[scope] = _submodules(
+                import_module(scope), pattern, on_error=on_error
+            )
         except ModuleNotFoundError as error:
             if error.name and (
                 scope == error.name or scope.startswith(f"{error.name}.")
@@ -127,19 +165,23 @@ def get_packages(
             raise
         return result
 
-    for pkg_name in local_packages:
-        pkg = safe_import(pkg_name)
+    included = [name for name in local_packages if not _matches_exclude(name, pattern)]
+    if local_packages and not included:
+        raise ValueError(
+            f"All local packages are excluded by --exclude {exclude!r}. "
+            "Use --exclude '' to include them."
+        )
+    for pkg_name in included:
+        pkg = safe_import(pkg_name, on_error=on_error)
         if pkg is None:
             continue
 
         log.debug("Walking package: %s", pkg_name)
-        submods = [pkg_name]
-        for _, modname, _ in pkgutil.walk_packages(pkg.__path__, f"{pkg_name}."):
-            if _matches_exclude(modname, pattern):
-                log.debug("Excluding module: %s", modname)
-                continue
-            submods.append(modname)
+        result[pkg_name] = _submodules(pkg, pattern, on_error=on_error)
 
-        result[pkg_name] = submods
-
+    if included and not result:
+        raise ImportError(
+            "All discovered packages failed to import. Install the missing dependencies "
+            "in the environment running pypatree."
+        )
     return result

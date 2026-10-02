@@ -2,7 +2,7 @@
 default: check dogfood regen-readme
 
 # CI pipeline
-ci: check smoke regen-readme
+ci: check smoke check-readme package-check
 
 # Run pypatree on itself
 dogfood:
@@ -16,10 +16,20 @@ check: lint typecheck test
 regen-readme:
     uv run python scripts/regen_readme.py
 
-# Fix and format with ruff
+# Check formatting without modifying the checkout
 lint:
+    uv run ruff check
+    uv run ruff format --check
+
+format:
     uv run ruff check --fix
     uv run ruff format
+
+check-readme:
+    uv run python scripts/regen_readme.py --check
+
+package-check:
+    uv run python scripts/check_dist.py
 
 # Type check with basedpyright
 typecheck:
