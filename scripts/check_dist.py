@@ -1,6 +1,7 @@
 import tempfile
+import tarfile
 from importlib.metadata import version
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from zipfile import ZipFile
 
 from lib import PYTHON_VERSION, ROOT, run
@@ -14,6 +15,9 @@ def main() -> None:
     wheel = wheels[0]
     source = ROOT / "dist" / f"pypatree-{release}.tar.gz"
     assert source.is_file(), source
+    with tarfile.open(source) as archive:
+        names = archive.getnames()
+        assert not any(".git" in PurePosixPath(name).parts for name in names), names
     with ZipFile(wheel) as archive:
         names = archive.namelist()
         assert "pypatree/py.typed" in names

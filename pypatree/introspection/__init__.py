@@ -42,9 +42,6 @@ def safe_import(
     return None
 
 
-_OBJECT_ADDR_RE = re.compile(r" at 0x[0-9a-fA-F]+>")
-
-
 def _format_annotation(annotation: object) -> str:
     if isinstance(annotation, str):
         return annotation
@@ -82,8 +79,10 @@ def _format_parameter(parameter: inspect.Parameter, show_defaults: bool) -> str:
     if parameter.default is not empty:
         separator = " = " if parameter.annotation is not empty else "="
         default = repr(parameter.default) if show_defaults else "..."
-        if show_defaults and not isinstance(parameter.default, str):
-            default = _OBJECT_ADDR_RE.sub(">", default)
+        if show_defaults:
+            address = f" at {id(parameter.default):#x}>"
+            if default.endswith(address):
+                default = default.removesuffix(address) + ">"
         result += separator + default
     return result
 

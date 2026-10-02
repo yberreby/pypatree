@@ -44,6 +44,9 @@ build-backend = "hatchling.build"
 packages = ["pypatree"]
 exclude = ["**/test.py"]
 
+[tool.hatch.build.targets.sdist]
+exclude = [".git"]
+
 [dependency-groups]
 dev = [
     "basedpyright>=1.35.0",

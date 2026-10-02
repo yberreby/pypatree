@@ -155,6 +155,13 @@ def test_signature_preserves_literal_values_and_defaults() -> None:
     assert "label='<x at 0x123>'" in signature
 
 
+def test_signature_preserves_strings_inside_default_containers() -> None:
+    def fn(values=["<x at 0x123>"]):
+        pass
+
+    assert format_signature(fn, True) == "fn(values=['<x at 0x123>'])"
+
+
 def test_signature_preserves_stringified_literal() -> None:
     def fn(mode: "Literal['fast', 'slow']") -> None:
         pass
