@@ -21,6 +21,15 @@ def _highlight(sig: str) -> Text:
     return text[start:end]
 
 
+def _module_label(name: str, modpath: str, style: str, cfg: Config) -> Text:
+    label = Text(name, style=style)
+    if cfg.docstrings != DocstringMode.none:
+        doc = get_module_docstring(modpath, short=cfg.docstrings == DocstringMode.short)
+        if doc:
+            label.append(f"  {doc}", style="dim")
+    return label
+
+
 def _add_subtree(
     parent: RichTree,
     tree: Tree,
@@ -36,15 +45,7 @@ def _add_subtree(
 
     for key in children:
         child_path = f"{modpath}.{key}"
-        label = f"[bold blue]{key}[/bold blue]"
-
-        if cfg.docstrings != DocstringMode.none:
-            short = cfg.docstrings == DocstringMode.short
-            doc = get_module_docstring(child_path, short=short)
-            if doc:
-                label += f"  [dim]{doc}[/dim]"
-
-        branch = parent.add(label)
+        branch = parent.add(_module_label(key, child_path, style="bold blue", cfg=cfg))
         _add_subtree(branch, tree[key], child_path, cfg)
 
 
@@ -52,14 +53,9 @@ def print_tree(pkg_name: str, tree: Tree, cfg: Config) -> None:
     """Print a package tree using rich."""
     console = Console()
 
-    label = f"[bold yellow]{pkg_name}[/bold yellow]"
-    if cfg.docstrings != DocstringMode.none:
-        short = cfg.docstrings == DocstringMode.short
-        doc = get_module_docstring(pkg_name, short=short)
-        if doc:
-            label += f"  [dim]{doc}[/dim]"
-
-    rich_tree = RichTree(label)
+    rich_tree = RichTree(
+        _module_label(pkg_name, pkg_name, style="bold yellow", cfg=cfg)
+    )
     _add_subtree(rich_tree, tree, pkg_name, cfg)
     console.print(rich_tree)
 

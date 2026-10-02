@@ -62,7 +62,7 @@ python_files = ["test.py", "test_*.py"]
 python_functions = ["test_*"]
 
 [tool.coverage.run]
-omit = ["pypatree/__main__.py"]
+omit = ["pypatree/__main__.py", "*/test.py"]
 
 [tool.coverage.report]
 exclude_lines = ["if __name__"]

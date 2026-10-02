@@ -1,3 +1,8 @@
+import sys
+from types import ModuleType
+
+import pytest
+
 from pypatree.config import Config, DocstringMode
 
 from . import _highlight, print_tree, render_tree
@@ -71,3 +76,20 @@ def test_highlight_preserves_signature() -> None:
     for sig in cases:
         result = _highlight(sig)
         assert result.plain == sig, f"Expected {sig!r}, got {result.plain!r}"
+
+
+def test_docstrings_are_literal_text(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = ModuleType("literal_docs")
+    child = ModuleType("literal_docs.child")
+    root.__doc__ = "An array [batch, width]."
+    child.__doc__ = "Keep [red]tags[/red] and [/unexpected]."
+    monkeypatch.setitem(sys.modules, root.__name__, root)
+    monkeypatch.setitem(sys.modules, child.__name__, child)
+
+    print_tree(root.__name__, {"child": {}}, Config())
+
+    output = capsys.readouterr().out
+    assert root.__doc__ in output
+    assert child.__doc__ in output

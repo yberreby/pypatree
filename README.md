@@ -24,45 +24,41 @@ pypatree  pypatree - Pretty-print a project's module tree.
 │   └── run(cfg: pypatree.config.Config) -> None
 ├── config  Configuration types for pypatree.
 │   ├── Config(
-│   │       scope: Optional[str],
-│   │       exclude: Optional[str],
+│   │       scope: str | None,
+│   │       exclude: str | None,
 │   │       docstrings: pypatree.config.DocstringMode,
 │   │       show_defaults: bool,
 │   │       verbose: bool,
 │   │   ) -> None
-│   └── DocstringMode(*args, **kwargs)
+│   └── DocstringMode(value, names, *, module, qualname, type, start)
 ├── discovery
-│   └── get_packages(
-│           exclude: Optional[str],
-│           scope: Optional[str],
-│       ) -> dict[str, list[str]]
+│   └── get_packages(exclude: str | None, scope: str | None) -> dict[str,
+│       list[str]]
 ├── display
 │   ├── print_tree(
 │   │       pkg_name: str,
-│   │       tree: dict[str, typing.Any],
+│   │       tree: dict[str, Any],
 │   │       cfg: pypatree.config.Config,
 │   │   ) -> None
-│   └── render_tree(tree: dict[str, typing.Any], prefix: str) -> list[str]
+│   └── render_tree(tree: dict[str, Any], prefix: str) -> list[str]
 ├── introspection
-│   ├── format_signature(obj: Union[Callable, type], show_defaults: bool) -> str
-│   ├── get_module_docstring(modname: str, short: bool) -> Optional[str]
+│   ├── format_signature(obj: Callable | type, show_defaults: bool) -> str
+│   ├── get_module_docstring(modname: str, short: bool) -> str | None
 │   ├── get_module_items(
 │   │       modname: str,
-│   │       exclude: Optional[str],
+│   │       exclude: str | None,
 │   │       show_defaults: bool,
 │   │   ) -> list[str]
-│   └── safe_import(modname: str) -> Optional[module]
+│   └── safe_import(modname: str) -> module | None
 └── tree
     ├── build_tree(
     │       submods: list[str],
     │       pkg_name: str,
-    │       exclude: Optional[str],
+    │       exclude: str | None,
     │       show_defaults: bool,
-    │   ) -> dict[str, typing.Any]
-    └── get_subtree(
-            tree: dict[str, typing.Any],
-            path: list[str],
-        ) -> Optional[dict[str, Any]]
+    │   ) -> dict[str, Any]
+    └── get_subtree(tree: dict[str, Any], path: list[str]) -> dict[str, Any] |
+        None
 ```
 
 Run `pypatree --help` for options:
@@ -101,8 +97,8 @@ httpx
 │       root_path: str,
 │       client: tuple[str, int],
 │   ) -> None
-├── AsyncBaseTransport(*args, **kwargs)
-├── AsyncByteStream(*args, **kwargs)
+├── AsyncBaseTransport()
+├── AsyncByteStream()
 ├── AsyncClient(
 │       *,
 │       auth: AuthTypes | None,
@@ -138,8 +134,8 @@ httpx
 │       retries: int,
 │       socket_options: typing.Iterable[SOCKET_OPTION] | None,
 │   ) -> None
-├── Auth(*args, **kwargs)
-├── BaseTransport(*args, **kwargs)
+├── Auth()
+├── BaseTransport()
 ├── BasicAuth(username: str | bytes, password: str | bytes) -> None
 ├── ByteStream(stream: bytes) -> None
 ├── Client(
@@ -173,12 +169,8 @@ httpx
 ├── DigestAuth(username: str | bytes, password: str | bytes) -> None
 ├── FunctionAuth(func: typing.Callable[[Request], Request]) -> None
 ├── HTTPError(message: str) -> None
-├── HTTPStatusError(
-│       message: str,
-│       *,
-│       request: Request,
-│       response: Response,
-│   ) -> None
+├── HTTPStatusError(message: str, *, request: Request, response: Response) ->
+│   None
 ├── HTTPTransport(
 │       verify: ssl.SSLContext | str | bool,
 │       cert: CertTypes | None,
@@ -252,7 +244,7 @@ httpx
 ├── StreamClosed() -> None
 ├── StreamConsumed() -> None
 ├── StreamError(message: str) -> None
-├── SyncByteStream(*args, **kwargs)
+├── SyncByteStream()
 ├── Timeout(
 │       timeout: TimeoutTypes | UnsetType,
 │       *,
@@ -275,7 +267,7 @@ httpx
 │   ) -> None
 ├── WriteError(message: str, *, request: Request | None) -> None
 ├── WriteTimeout(message: str, *, request: Request | None) -> None
-├── codes(*args, **kwargs)
+├── codes(value, names, *, module, qualname, type, start)
 ├── create_ssl_context(
 │       verify: ssl.SSLContext | str | bool,
 │       cert: CertTypes | None,
@@ -449,14 +441,14 @@ httpx
 │   │       response: Response,
 │   │       start: float,
 │   │   ) -> None
-│   ├── ClientState(*args, **kwargs)
-│   └── UseClientDefault(*args, **kwargs)
+│   ├── ClientState(value, names, *, module, qualname, type, start)
+│   └── UseClientDefault()
 ├── _config
-│   └── UnsetType(*args, **kwargs)
+│   └── UnsetType()
 ├── _content
 │   ├── AsyncIteratorByteStream(stream: AsyncIterable[bytes]) -> None
 │   ├── IteratorByteStream(stream: Iterable[bytes]) -> None
-│   ├── UnattachedStream(*args, **kwargs)
+│   ├── UnattachedStream()
 │   ├── encode_content(
 │   │       content: str | bytes | Iterable[bytes] | AsyncIterable[bytes],
 │   │   ) -> tuple[dict[str, str], SyncByteStream | AsyncByteStream]
@@ -481,16 +473,15 @@ httpx
 │   │       json: Any | None,
 │   │   ) -> tuple[dict[str, str], SyncByteStream | AsyncByteStream]
 │   ├── encode_text(text: str) -> tuple[dict[str, str], ByteStream]
-│   └── encode_urlencoded_data(
-│           data: RequestData,
-│       ) -> tuple[dict[str, str], ByteStream]
+│   └── encode_urlencoded_data(data: RequestData) -> tuple[dict[str, str],
+│       ByteStream]
 ├── _decoders  Handlers for Content-Encoding.
 │   ├── BrotliDecoder() -> None
 │   ├── ByteChunker(chunk_size: int | None) -> None
-│   ├── ContentDecoder(*args, **kwargs)
+│   ├── ContentDecoder()
 │   ├── DeflateDecoder() -> None
 │   ├── GZipDecoder() -> None
-│   ├── IdentityDecoder(*args, **kwargs)
+│   ├── IdentityDecoder()
 │   ├── LineDecoder() -> None
 │   ├── MultiDecoder(children: typing.Sequence[ContentDecoder]) -> None
 │   ├── TextChunker(chunk_size: int | None) -> None
@@ -527,10 +518,18 @@ httpx
 │   └── wsgi
 │       └── WSGIByteStream(result: typing.Iterable[bytes]) -> None
 ├── _types  Type definitions for type checking purposes.
-├── _urlparse  An implementation of `urlparse` that provides URL validation and 
+├── _urlparse  An implementation of `urlparse` that provides URL validation and
 │   normalization
 │   ├── PERCENT(string: str) -> str
-│   ├── ParseResult(*args, **kwargs)
+│   ├── ParseResult(
+│   │       scheme: ForwardRef('str'),
+│   │       userinfo: ForwardRef('str'),
+│   │       host: ForwardRef('str'),
+│   │       port: ForwardRef('int | None'),
+│   │       path: ForwardRef('str'),
+│   │       query: ForwardRef('str | None'),
+│   │       fragment: ForwardRef('str | None'),
+│   │   )
 │   ├── encode_host(host: str) -> str
 │   ├── normalize_path(path: str) -> str
 │   ├── normalize_port(port: str | int | None, scheme: str) -> int | None
@@ -547,7 +546,7 @@ httpx
     ├── peek_filelike_length(stream: typing.Any) -> int | None
     ├── primitive_value_to_str(value: PrimitiveData) -> str
     ├── to_bytes(value: str | bytes, encoding: str) -> bytes
-    ├── to_bytes_or_str(value: str, match_type_of: typing.AnyStr) -> 
+    ├── to_bytes_or_str(value: str, match_type_of: typing.AnyStr) ->
     │   typing.AnyStr
     ├── to_str(value: str | bytes, encoding: str) -> str
     └── unquote(value: str) -> str

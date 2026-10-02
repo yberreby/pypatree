@@ -2,8 +2,11 @@ import importlib
 import inspect
 import logging
 import re
+import sys
+import types
+from collections import abc
 from types import ModuleType
-from typing import Annotated, Callable, Optional, Union, get_args, get_origin
+from typing import Annotated, Callable, Literal, Optional, Union, get_args, get_origin
 
 log = logging.getLogger(__name__)
 
@@ -24,52 +27,53 @@ def safe_import(modname: str) -> Optional[ModuleType]:
 
 
 _OBJECT_ADDR_RE = re.compile(r" at 0x[0-9a-fA-F]+>")
-_QUOTED_TYPE_RE = re.compile(r"'([^']+)'")
 
 
-def _unwrap_annotated(annotation: type) -> type:
-    """Recursively strip Annotated wrappers from a type.
-
-    Annotated[T, meta...] -> T
-    List[Annotated[T, meta]] -> List[T]
-    Dict[K, Annotated[V, meta]] -> Dict[K, V]
-    """
+def _format_annotation(annotation: object) -> str:
+    if isinstance(annotation, str):
+        return annotation
+    if annotation is type(None):
+        return "None"
     origin = get_origin(annotation)
-
-    # Annotated[T, ...] -> recurse into T
+    args = get_args(annotation)
     if origin is Annotated:
-        args = get_args(annotation)
-        assert args, "Annotated must have at least one arg"
-        return _unwrap_annotated(args[0])
+        return _format_annotation(args[0])
+    if origin is Union or (sys.version_info >= (3, 10) and origin is types.UnionType):
+        return " | ".join(_format_annotation(arg) for arg in args)
+    if origin is abc.Callable and args:
+        parameters, result = args
+        inputs = (
+            "[" + ", ".join(_format_annotation(arg) for arg in parameters) + "]"
+            if isinstance(parameters, list)
+            else _format_annotation(parameters)
+        )
+        return f"Callable[{inputs}, {_format_annotation(result)}]"
+    if origin is not None and origin is not Literal and args:
+        arguments = ", ".join(_format_annotation(arg) for arg in args)
+        return f"{inspect.formatannotation(origin)}[{arguments}]"
+    return inspect.formatannotation(annotation)
 
-    # Generic like List[X], Dict[K, V] -> rebuild with unwrapped args
-    if origin is not None:
-        args = get_args(annotation)
-        if args:
-            return origin[tuple(_unwrap_annotated(a) for a in args)]
 
-    # Plain type like str, int -> return as-is
-    return annotation
-
-
-def _simplify_params(
-    params: list[inspect.Parameter], show_defaults: bool
-) -> list[inspect.Parameter]:
-    """Unwrap Annotated types and optionally strip defaults."""
-    result = []
-    for p in params:
-        ann = p.annotation
-        if ann is not inspect.Parameter.empty:
-            ann = _unwrap_annotated(ann)
-        default = p.default if show_defaults else inspect.Parameter.empty
-        result.append(p.replace(annotation=ann, default=default))
+def _format_parameter(parameter: inspect.Parameter, show_defaults: bool) -> str:
+    empty = inspect.Parameter.empty
+    result = str(parameter.replace(annotation=empty, default=empty))
+    if parameter.annotation is not empty:
+        result += f": {_format_annotation(parameter.annotation)}"
+    if show_defaults and parameter.default is not empty:
+        separator = " = " if parameter.annotation is not empty else "="
+        default = repr(parameter.default)
+        if not isinstance(parameter.default, str):
+            default = _OBJECT_ADDR_RE.sub(">", default)
+        result += separator + default
     return result
 
 
 _MAX_ONELINER = 80
 
 
-def _format_params(params: list[inspect.Parameter], max_len: int) -> str:
+def _format_params(
+    params: list[inspect.Parameter], max_len: int, show_defaults: bool
+) -> str:
     """Format parameters, using multiple lines if needed.
 
     Handles /, *, and *args/**kwargs markers correctly.
@@ -99,7 +103,7 @@ def _format_params(params: list[inspect.Parameter], max_len: int) -> str:
         if p.kind == PK.VAR_POSITIONAL:
             saw_var_positional = True
 
-        parts.append(str(p))
+        parts.append(_format_parameter(p, show_defaults=show_defaults))
         prev_kind = p.kind
 
     # Trailing / if all positional-only
@@ -115,28 +119,23 @@ def _format_params(params: list[inspect.Parameter], max_len: int) -> str:
 
 def format_signature(obj: Union[Callable, type], show_defaults: bool) -> str:
     """Format function or class with full signature."""
-    name = getattr(obj, "__name__", str(obj))
+    name = getattr(obj, "__name__", type(obj).__name__)
     try:
-        if inspect.isclass(obj):
-            sig = inspect.signature(obj.__init__)
-            params = [p for k, p in sig.parameters.items() if k != "self"]
-        else:
-            sig = inspect.signature(obj)
-            params = list(sig.parameters.values())
-        params = _simplify_params(params, show_defaults)
-        ret = sig.return_annotation
-        if ret is inspect.Signature.empty:
-            ret_str = ""
-        else:
-            ret_str = f" -> {inspect.formatannotation(_unwrap_annotated(ret))}"
-    except (ValueError, TypeError):
-        return f"{name}()"
+        sig = inspect.signature(obj)
+    except (ValueError, TypeError) as error:
+        log.warning("Could not inspect signature for %s: %s", name, error)
+        return f"{name}(...)"
+
+    ret = sig.return_annotation
+    ret_str = "" if ret is inspect.Signature.empty else f" -> {_format_annotation(ret)}"
 
     # Format with proper line breaks for long signatures
-    params_str = _format_params(params, _MAX_ONELINER - len(name) - len(ret_str))
-    s = f"{name}{params_str}{ret_str}"
-    s = _OBJECT_ADDR_RE.sub(">", s)
-    return _QUOTED_TYPE_RE.sub(r"\1", s)
+    params_str = _format_params(
+        list(sig.parameters.values()),
+        max_len=_MAX_ONELINER - len(name) - len(ret_str),
+        show_defaults=show_defaults,
+    )
+    return f"{name}{params_str}{ret_str}"
 
 
 def get_module_docstring(modname: str, short: bool = True) -> Optional[str]:

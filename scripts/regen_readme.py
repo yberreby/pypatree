@@ -41,7 +41,7 @@ def generate() -> str:
         template = template.replace("{{SHOWCASE_PYTHON}}", PYTHON_VERSION)
         template = template.replace("{{SHOWCASE_OUTPUT}}", output)
 
-    return template
+    return "\n".join(line.rstrip() for line in template.splitlines()) + "\n"
 
 
 def main() -> int:
@@ -49,10 +49,10 @@ def main() -> int:
 
     if "--check" in sys.argv:
         if not OUTPUT.exists():
-            print("README.md missing. Run: just readme")
+            print("README.md missing. Run: uv run just regen-readme")
             return 1
         if OUTPUT.read_text() != generated:
-            print("README.md is stale. Run: just readme")
+            print("README.md is stale. Run: uv run just regen-readme")
             return 1
         return 0
 

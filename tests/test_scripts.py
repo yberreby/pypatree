@@ -1,12 +1,10 @@
-import inspect
 import subprocess
 import sys
-from enum import Enum
 from pathlib import Path
 
 import pytest
 
-from scripts.lib import run, run_pypatree_on_repo
+from scripts.lib import PYTHON_VERSION, run, run_pypatree_on_repo
 
 
 def test_run_reports_subprocess_failure(tmp_path: Path) -> None:
@@ -32,7 +30,7 @@ def test_showcase_uses_requested_revision_and_project_python(tmp_path: Path) -> 
         '\n[project]\nname = "example"\nversion = "0.1.0"\nrequires-python = ">=3.9"\n'
     )
     (package / "__init__.py").write_text(
-        "from enum import Enum\nclass Flavor(Enum):\n    ONE = 1\n"
+        "import platform\n__doc__ = 'Python ' + platform.python_version()\n"
         "def first_marker() -> None:\n    pass\n"
     )
     subprocess.run(["git", "init", "-q", str(source)], check=True)
@@ -63,5 +61,4 @@ def test_showcase_uses_requested_revision_and_project_python(tmp_path: Path) -> 
 
     assert "first_marker" in output
     assert "second_marker" not in output
-    enum_keyword_name = tuple(inspect.signature(Enum.__init__).parameters)[-1]
-    assert f"**{enum_keyword_name}" in output
+    assert f"Python {PYTHON_VERSION}" in output
