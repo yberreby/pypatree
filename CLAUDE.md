@@ -28,6 +28,9 @@ Do not allow ugliness to creep in.
 
 Output format and color are orthogonal controls [user, 2026-10-02].
 
+Exercise the standalone `uvx pypatree@latest --flat` workflow from both the
+repository root and a Python subproject directory [user report, 2026-10-02].
+
 Use `scripts.lib.run` for script and test subprocesses that operate on temporary
 repositories. It isolates repository-local Git state inherited from hooks
 [regression reproduced in a linked worktree, 2026-10-02].

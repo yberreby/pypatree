@@ -43,3 +43,6 @@ class Config:
 
     verbose: bool = False
     """Enable debug logging to stderr."""
+
+    runtime: bool = False
+    """Import editable-installed code in this environment. Default: read local source."""

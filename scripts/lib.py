@@ -69,8 +69,8 @@ def run_pypatree_on_repo(
     constraints: Optional[Path] = None,
     extras: tuple[str, ...] = (),
     scope: Optional[str] = None,
+    runtime: bool = False,
 ) -> str:
-    """Clone repo, install, run pypatree, return output."""
     with checkout_repo(repo_url, revision=revision) as dest:
         run("uv", "venv", "--python", PYTHON_VERSION, cwd=dest)
         executable = str(dest / ".venv" / "bin" / "python")
@@ -78,8 +78,12 @@ def run_pypatree_on_repo(
         if constraints is not None:
             install.extend(["--constraints", str(constraints)])
         package = f".[{','.join(extras)}]" if extras else "."
-        run(*install, "-e", package, PYPATREE, cwd=dest)
+        if runtime:
+            install.extend(["-e", package])
+        run(*install, PYPATREE, cwd=dest)
         command = ["uv", "run", "--python", executable, "--no-sync", "pypatree"]
+        if runtime:
+            command.append("--runtime")
         if scope is not None:
             command.append(scope)
         output = run(*command, cwd=dest).stdout.decode()

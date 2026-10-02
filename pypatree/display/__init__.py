@@ -18,7 +18,7 @@ def _highlight(signature: str) -> Text:
 
 def _label(name: str, tree: Tree, cfg: Config) -> str:
     if tree.failed:
-        return f"{name} [import failed]"
+        return f"{name} [inspection failed]"
     if cfg.docstrings == DocstringMode.none or not tree.docstring:
         return name
     docstring = tree.docstring

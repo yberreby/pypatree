@@ -52,6 +52,27 @@ def invoke(cli: Path, source: Path, *args: str) -> subprocess.CompletedProcess[s
     )
 
 
+def test_uninstalled_monorepo_and_subproject(cli: Path, tmp_path: Path) -> None:
+    for project, package in [("core", "example_core"), ("engine", "example_engine")]:
+        directory = tmp_path / project
+        module = directory / "src" / package
+        module.mkdir(parents=True)
+        (directory / "pyproject.toml").write_text(
+            f'[project]\nname = "{project}"\nversion = "0.0.0"\n'
+        )
+        (module / "__init__.py").write_text(
+            "import unavailable_pypatree_fixture_dependency\n"
+            "raise RuntimeError('source inspection must not execute this')\n"
+            "def visible(value: int = 3) -> int: return value\n"
+        )
+    for directory in [tmp_path, tmp_path / "engine"]:
+        result = invoke(cli, directory, "--flat")
+        assert result.returncode == 0, result.stderr
+        assert "example_engine.visible(value: int = ...) -> int" in result.stdout
+        assert ("example_core.visible" in result.stdout) == (directory == tmp_path)
+        assert result.stderr == ""
+
+
 @pytest.mark.parametrize(
     "package", ["example", "src/example", "src", "example.py", "namespace"]
 )
@@ -132,7 +153,7 @@ def test_import_failure_reports_partial_output_and_next_action(
             "example/child/__init__.py": failure + "\n",
         },
     )
-    result = invoke(cli, tmp_path)
+    result = invoke(cli, tmp_path, "--runtime")
     assert result.returncode != 0
     assert "visible()" in result.stdout
     assert "example.child" in result.stderr
@@ -150,7 +171,7 @@ def test_import_stdout_is_kept_out_of_tree(cli: Path, tmp_path: Path) -> None:
             "example/__init__.py": "print('import chatter')\ndef visible(): pass\n",
         },
     )
-    result = invoke(cli, tmp_path, "--flat")
+    result = invoke(cli, tmp_path, "--flat", "--runtime")
     assert result.returncode == 0, result.stderr
     assert result.stdout.splitlines() == ["example", "example.visible()"]
     assert "import chatter" in result.stderr
@@ -161,7 +182,7 @@ def test_empty_directory_has_actionable_failure(cli: Path, tmp_path: Path) -> No
     assert result.returncode != 0
     assert result.stdout == ""
     assert str(tmp_path) in result.stderr
-    assert "uv pip install -e ." in result.stderr
+    assert "Run pypatree from a Python project" in result.stderr
 
 
 def test_invalid_regex_has_actionable_failure(cli: Path, tmp_path: Path) -> None:
@@ -184,7 +205,7 @@ def test_project_logging_configuration_cannot_hide_import_failure(
             "example/child/__init__.py": "raise RuntimeError('broken child')\n",
         },
     )
-    result = invoke(cli, tmp_path)
+    result = invoke(cli, tmp_path, "--runtime")
     assert result.returncode != 0
     assert "broken child" in result.stderr
     assert "Output is incomplete" in result.stderr
@@ -202,7 +223,7 @@ def test_recursive_package_paths_have_a_bounded_failure(
             "example/loop/__init__.py": "from pathlib import Path\n__path__ = [str(Path(__file__).parents[1])]\n",
         },
     )
-    result = invoke(cli, tmp_path, "--flat")
+    result = invoke(cli, tmp_path, "--flat", "--runtime")
     assert result.returncode != 0
     assert result.stdout.splitlines() == [
         "example",

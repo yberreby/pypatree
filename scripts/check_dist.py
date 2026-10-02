@@ -41,7 +41,6 @@ def main() -> None:
                 "from typing import Literal\n"
                 'def visible(mode: Literal["fast", "slow"] = "fast") -> bool: pass\n'
             )
-            run("uv", "pip", "install", "--python", str(executable), "-e", str(project))
             result = run(
                 str(executable.with_name("pypatree")),
                 "--flat",
@@ -54,6 +53,21 @@ def main() -> None:
                 "example",
                 "example.visible(mode: Literal['fast', 'slow'] = 'fast') -> bool",
             ], result.stdout
+            isolated = run(
+                "uvx",
+                "--no-cache",
+                "--python",
+                PYTHON_VERSION,
+                "--from",
+                str(artifact),
+                "pypatree",
+                "--flat",
+                "--show-defaults",
+                "--color",
+                "never",
+                cwd=project,
+            )
+            assert isolated.stdout == result.stdout, isolated.stdout
             location = (
                 run(
                     str(executable),
