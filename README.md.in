@@ -17,8 +17,36 @@ inspect that namespace without importing unrelated submodules. Python still runs
 the requested module's parent package initializers. Unknown and excluded scopes
 raise an error.
 
+Use `uv run pypatree --flat` for fully qualified names, one module or callable
+per line. Flat output has no terminal wrapping and works with `rg` and other
+line-oriented tools. Both formats support `--color auto|always|never`; auto colors
+terminal output and emits plain text when piped. Add `--docstrings none` to omit
+module prose.
+
+Pypatree imports project code. Use it on trusted projects in their own Python
+environment. Imports can have side effects or require optional dependencies.
+An import failure produces a diagnostic on stderr; the command retains any
+available output and exits nonzero. A callable whose signature is unavailable
+appears as `name(...)` with a warning. `--verbose` adds discovery details and
+tracebacks for command failures.
+
+Discovery uses local editable-install metadata. Run from the Python package's
+project directory, including the relevant subproject in a monorepo. Install it
+with `uv pip install -e .` if needed. Conventional package, `src`, namespace-only,
+and single-module layouts are supported. Where the installer supplies no package
+names, discovery prefers regular packages, then namespaces, then module files;
+this keeps adjacent build scripts out of package trees.
+
+Output lists public functions and classes defined in each module. Class methods,
+constants, and imported re-exports are outside this view.
+
 ```
 {{PYPATREE_OUTPUT}}
+```
+
+Flat output for the introspection module:
+```
+{{FLAT_OUTPUT}}
 ```
 
 Run `pypatree --help` for options:
@@ -31,3 +59,12 @@ Source: commit `{{SHOWCASE_REVISION}}`, Python {{SHOWCASE_PYTHON}}.
 ```
 {{SHOWCASE_OUTPUT}}
 ```
+
+Python API: `build_tree()` returns a `Tree` dataclass with `items`, `children`,
+`docstring`, and `failed` fields. In 0.5, this replaces the dictionary containing
+the reserved `__items__` key. Read `tree.items` and `tree.children[name]` when
+updating callers from 0.4.
+
+Development commands live in `justfile`. Run `uv run just` for local checks and
+README generation. Refresh the pinned showcase dependencies with
+`uv run python scripts/regen_readme.py --update-constraints`.

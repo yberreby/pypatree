@@ -17,10 +17,33 @@ inspect that namespace without importing unrelated submodules. Python still runs
 the requested module's parent package initializers. Unknown and excluded scopes
 raise an error.
 
+Use `uv run pypatree --flat` for fully qualified names, one module or callable
+per line. Flat output has no terminal wrapping and works with `rg` and other
+line-oriented tools. Both formats support `--color auto|always|never`; auto colors
+terminal output and emits plain text when piped. Add `--docstrings none` to omit
+module prose.
+
+Pypatree imports project code. Use it on trusted projects in their own Python
+environment. Imports can have side effects or require optional dependencies.
+An import failure produces a diagnostic on stderr; the command retains any
+available output and exits nonzero. A callable whose signature is unavailable
+appears as `name(...)` with a warning. `--verbose` adds discovery details and
+tracebacks for command failures.
+
+Discovery uses local editable-install metadata. Run from the Python package's
+project directory, including the relevant subproject in a monorepo. Install it
+with `uv pip install -e .` if needed. Conventional package, `src`, namespace-only,
+and single-module layouts are supported. Where the installer supplies no package
+names, discovery prefers regular packages, then namespaces, then module files;
+this keeps adjacent build scripts out of package trees.
+
+Output lists public functions and classes defined in each module. Class methods,
+constants, and imported re-exports are outside this view.
+
 ```
 pypatree  pypatree - Pretty-print a project's module tree.
 ├── __main__
-│   ├── main() -> None
+│   ├── main() -> int
 │   └── run(cfg: pypatree.config.Config) -> None
 ├── config  Configuration types for pypatree.
 │   ├── Config(
@@ -28,37 +51,70 @@ pypatree  pypatree - Pretty-print a project's module tree.
 │   │       exclude: str | None,
 │   │       docstrings: pypatree.config.DocstringMode,
 │   │       show_defaults: bool,
+│   │       flat: bool,
+│   │       color: Literal['auto', 'always', 'never'],
 │   │       verbose: bool,
 │   │   ) -> None
 │   └── DocstringMode(value, names, *, module, qualname, type, start)
 ├── discovery
-│   └── get_packages(exclude: str | None, scope: str | None) -> dict[str,
-│       list[str]]
+│   └── get_packages(
+│           exclude: str | None,
+│           scope: str | None,
+│       ) -> dict[str, list[str]]
 ├── display
 │   ├── print_tree(
 │   │       pkg_name: str,
-│   │       tree: dict[str, Any],
+│   │       tree: pypatree.tree.Tree,
 │   │       cfg: pypatree.config.Config,
 │   │   ) -> None
-│   └── render_tree(tree: dict[str, Any], prefix: str) -> list[str]
+│   └── render_tree(tree: pypatree.tree.Tree, prefix: str) -> list[str]
 ├── introspection
-│   ├── format_signature(obj: Callable | type, show_defaults: bool) -> str
+│   ├── format_signature(
+│   │       obj: Callable | type,
+│   │       show_defaults: bool,
+│   │       *,
+│   │       max_width: int | None,
+│   │       name: str | None,
+│   │   ) -> str
 │   ├── get_module_docstring(modname: str, short: bool) -> str | None
 │   ├── get_module_items(
 │   │       modname: str,
 │   │       exclude: str | None,
 │   │       show_defaults: bool,
+│   │       *,
+│   │       max_width: int | None,
 │   │   ) -> list[str]
+│   ├── import_module(modname: str) -> module
 │   └── safe_import(modname: str) -> module | None
 └── tree
+    ├── Tree(
+    │       items: list[str],
+    │       children: dict[str, Tree],
+    │       docstring: str | None,
+    │       failed: bool,
+    │   ) -> None
     ├── build_tree(
     │       submods: list[str],
     │       pkg_name: str,
     │       exclude: str | None,
     │       show_defaults: bool,
-    │   ) -> dict[str, Any]
-    └── get_subtree(tree: dict[str, Any], path: list[str]) -> dict[str, Any] |
-        None
+    │       *,
+    │       max_width: int | None,
+    │   ) -> pypatree.tree.Tree
+    └── get_subtree(
+            tree: pypatree.tree.Tree,
+            path: list[str],
+        ) -> pypatree.tree.Tree | None
+```
+
+Flat output for the introspection module:
+```
+pypatree.introspection
+pypatree.introspection.format_signature(obj: Callable | type, show_defaults: bool, *, max_width: int | None, name: str | None) -> str
+pypatree.introspection.get_module_docstring(modname: str, short: bool) -> str | None
+pypatree.introspection.get_module_items(modname: str, exclude: str | None, show_defaults: bool, *, max_width: int | None) -> list[str]
+pypatree.introspection.import_module(modname: str) -> module
+pypatree.introspection.safe_import(modname: str) -> module | None
 ```
 
 Run `pypatree --help` for options:
@@ -68,22 +124,27 @@ usage: pypatree [-h] [OPTIONS] [MODULE]
 Display module tree with public functions/classes.
 
 ╭─ positional arguments ─────────────────────────────────────────────────────╮
-│ [MODULE]                                                                   │
-│     Module path to scope to (e.g., 'mypkg.submodule'). (default: None)     │
+│ [MODULE]                Module path to scope to (e.g., 'mypkg.submodule'). │
+│                         (default: None)                                    │
 ╰────────────────────────────────────────────────────────────────────────────╯
 ╭─ options ──────────────────────────────────────────────────────────────────╮
-│ -h, --help                                                                 │
-│     show this help message and exit                                        │
-│ --exclude {None}|STR                                                       │
-│     Regex to exclude module segments (default: test modules). Use '' for   │
-│     none. (default: '^test$|^test_')                                       │
+│ -h, --help              show this help message and exit                    │
+│ --exclude {None}|STR    Regex to exclude module segments (default: test    │
+│                         modules). Use '' for none. (default:               │
+│                         '^tests?$|^test_')                                 │
 │ --docstrings {none,short,full}                                             │
-│     Show module docstrings: none, short (first line), or full. (default:   │
-│     short)                                                                 │
+│                         Show module docstrings: none, short (first line),  │
+│                         or full. (default: short)                          │
 │ --show-defaults, --no-show-defaults                                        │
-│     Show default argument values in signatures. (default: False)           │
+│                         Show default argument values in signatures.        │
+│                         (default: False)                                   │
+│ --flat, --no-flat       Print fully qualified names, one item per line,    │
+│                         without tree guides or wrapping. (default: False)  │
+│ --color {auto,always,never}                                                │
+│                         Color policy for either output format. Auto        │
+│                         detects the terminal. (default: auto)              │
 │ --verbose, --no-verbose                                                    │
-│     Enable debug logging to stderr. (default: False)                       │
+│                         Enable debug logging to stderr. (default: False)   │
 ╰────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -169,8 +230,12 @@ httpx
 ├── DigestAuth(username: str | bytes, password: str | bytes) -> None
 ├── FunctionAuth(func: typing.Callable[[Request], Request]) -> None
 ├── HTTPError(message: str) -> None
-├── HTTPStatusError(message: str, *, request: Request, response: Response) ->
-│   None
+├── HTTPStatusError(
+│       message: str,
+│       *,
+│       request: Request,
+│       response: Response,
+│   ) -> None
 ├── HTTPTransport(
 │       verify: ssl.SSLContext | str | bool,
 │       cert: CertTypes | None,
@@ -312,7 +377,6 @@ httpx
 │       timeout: TimeoutTypes,
 │       trust_env: bool,
 │   ) -> Response
-├── main() -> None
 ├── options(
 │       url: URL | str,
 │       *,
@@ -473,8 +537,9 @@ httpx
 │   │       json: Any | None,
 │   │   ) -> tuple[dict[str, str], SyncByteStream | AsyncByteStream]
 │   ├── encode_text(text: str) -> tuple[dict[str, str], ByteStream]
-│   └── encode_urlencoded_data(data: RequestData) -> tuple[dict[str, str],
-│       ByteStream]
+│   └── encode_urlencoded_data(
+│           data: RequestData,
+│       ) -> tuple[dict[str, str], ByteStream]
 ├── _decoders  Handlers for Content-Encoding.
 │   ├── BrotliDecoder() -> None
 │   ├── ByteChunker(chunk_size: int | None) -> None
@@ -490,6 +555,45 @@ httpx
 ├── _exceptions  Our exception hierarchy:
 │   └── request_context(request: Request | None) -> typing.Iterator[None]
 ├── _main
+│   ├── download_response(response: Response, download: typing.BinaryIO) -> None
+│   ├── format_certificate(cert: _PeerCertRetDictType) -> str
+│   ├── format_request_headers(request: httpcore.Request, http2: bool) -> str
+│   ├── format_response_headers(
+│   │       http_version: bytes,
+│   │       status: int,
+│   │       reason_phrase: bytes | None,
+│   │       headers: list[tuple[bytes, bytes]],
+│   │   ) -> str
+│   ├── get_lexer_for_response(response: Response) -> str
+│   ├── handle_help(
+│   │       ctx: click.Context,
+│   │       param: click.Option | click.Parameter,
+│   │       value: typing.Any,
+│   │   ) -> None
+│   ├── print_help() -> None
+│   ├── print_request_headers(request: httpcore.Request, http2: bool) -> None
+│   ├── print_response(response: Response) -> None
+│   ├── print_response_headers(
+│   │       http_version: bytes,
+│   │       status: int,
+│   │       reason_phrase: bytes | None,
+│   │       headers: list[tuple[bytes, bytes]],
+│   │   ) -> None
+│   ├── trace(
+│   │       name: str,
+│   │       info: typing.Mapping[str, typing.Any],
+│   │       verbose: bool,
+│   │   ) -> None
+│   ├── validate_auth(
+│   │       ctx: click.Context,
+│   │       param: click.Option | click.Parameter,
+│   │       value: typing.Any,
+│   │   ) -> typing.Any
+│   └── validate_json(
+│           ctx: click.Context,
+│           param: click.Option | click.Parameter,
+│           value: typing.Any,
+│       ) -> typing.Any
 ├── _models
 ├── _multipart
 │   ├── DataField(name: str, value: str | bytes | int | float | None) -> None
@@ -510,8 +614,9 @@ httpx
 │   │   └── is_running_trio() -> bool
 │   ├── base
 │   ├── default  Custom transports, with nicely configured defaults.
-│   │   ├── AsyncResponseStream(httpcore_stream: typing.AsyncIterable[bytes]) ->
-│   │   │   None
+│   │   ├── AsyncResponseStream(
+│   │   │       httpcore_stream: typing.AsyncIterable[bytes],
+│   │   │   ) -> None
 │   │   ├── ResponseStream(httpcore_stream: typing.Iterable[bytes]) -> None
 │   │   └── map_httpcore_exceptions() -> typing.Iterator[None]
 │   ├── mock
@@ -546,14 +651,19 @@ httpx
     ├── peek_filelike_length(stream: typing.Any) -> int | None
     ├── primitive_value_to_str(value: PrimitiveData) -> str
     ├── to_bytes(value: str | bytes, encoding: str) -> bytes
-    ├── to_bytes_or_str(value: str, match_type_of: typing.AnyStr) ->
-    │   typing.AnyStr
+    ├── to_bytes_or_str(
+    │       value: str,
+    │       match_type_of: typing.AnyStr,
+    │   ) -> typing.AnyStr
     ├── to_str(value: str | bytes, encoding: str) -> str
     └── unquote(value: str) -> str
-tests
-├── client
-├── common
-├── concurrency
-├── conftest
-└── models
 ```
+
+Python API: `build_tree()` returns a `Tree` dataclass with `items`, `children`,
+`docstring`, and `failed` fields. In 0.5, this replaces the dictionary containing
+the reserved `__items__` key. Read `tree.items` and `tree.children[name]` when
+updating callers from 0.4.
+
+Development commands live in `justfile`. Run `uv run just` for local checks and
+README generation. Refresh the pinned showcase dependencies with
+`uv run python scripts/regen_readme.py --update-constraints`.

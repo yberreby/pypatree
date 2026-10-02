@@ -2,8 +2,11 @@
 
 import os
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import Any, Optional
 
 ROOT = Path(__file__).parent.parent
@@ -17,21 +20,19 @@ def run(*cmd: str, **kw: Any) -> subprocess.CompletedProcess[bytes]:
     if result.returncode:
         raise RuntimeError(
             f"{cmd!r} failed in {kw.get('cwd', Path.cwd())} "
-            f"(exit {result.returncode}):\n{result.stderr.decode(errors='replace')}"
+            f"(exit {result.returncode}):\n"
+            f"{result.stdout.decode(errors='replace')}{result.stderr.decode(errors='replace')}"
         )
+    if result.stderr:
+        sys.stderr.write(result.stderr.decode(errors="replace"))
     return result
 
 
-def run_pypatree_on_repo(
-    repo_url: str,
-    timeout: int = 120,
-    revision: Optional[str] = None,
-    constraints: Optional[Path] = None,
-) -> str:
-    """Clone repo, install, run pypatree, return output."""
+@contextmanager
+def checkout_repo(repo_url: str, revision: Optional[str] = None) -> Iterator[Path]:
     with tempfile.TemporaryDirectory() as tmp:
         name = repo_url.split("/")[-1].removesuffix(".git")
-        dest = f"{tmp}/{name}"
+        dest = str(Path(tmp) / name)
 
         if revision is None:
             run("git", "clone", "--depth=1", "-q", repo_url, dest)
@@ -44,11 +45,29 @@ def run_pypatree_on_repo(
             )
             assert actual_revision == revision, (actual_revision, revision)
 
+        yield Path(dest)
+
+
+def run_pypatree_on_repo(
+    repo_url: str,
+    timeout: int = 120,
+    revision: Optional[str] = None,
+    constraints: Optional[Path] = None,
+    extras: tuple[str, ...] = (),
+    scope: Optional[str] = None,
+) -> str:
+    """Clone repo, install, run pypatree, return output."""
+    with checkout_repo(repo_url, revision=revision) as dest:
         run("uv", "venv", "--python", PYTHON_VERSION, cwd=dest)
         install = ["uv", "pip", "install"]
         if constraints is not None:
             install.extend(["--constraints", str(constraints)])
-        run(*install, "-e", ".", PYPATREE, cwd=dest, timeout=timeout)
-        return run(
-            "uv", "run", "--no-sync", "pypatree", cwd=dest, timeout=timeout
-        ).stdout.decode()
+        package = f".[{','.join(extras)}]" if extras else "."
+        run(*install, "-e", package, PYPATREE, cwd=dest, timeout=timeout)
+        command = ["uv", "run", "--no-sync", "pypatree"]
+        if scope is not None:
+            command.append(scope)
+        output = run(*command, cwd=dest, timeout=timeout).stdout.decode()
+        if not output.strip():
+            raise RuntimeError(f"pypatree produced no tree for {repo_url}")
+        return output

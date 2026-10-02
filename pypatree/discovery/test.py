@@ -1,9 +1,14 @@
 """Tests for discovery module - uses pypatree itself as test subject."""
 
 import os
+import json
+import importlib.metadata as metadata
 import re
 import tempfile
+from pathlib import Path
 from unittest.mock import patch
+
+import pytest
 
 from pypatree.config import DEFAULT_EXCLUDE
 
@@ -25,7 +30,7 @@ def test_matches_exclude_not_testing() -> None:
     pattern = re.compile(DEFAULT_EXCLUDE)
     assert _matches_exclude("testing", pattern) is False
     assert _matches_exclude("testable", pattern) is False
-    assert _matches_exclude("tests", pattern) is False
+    assert _matches_exclude("tests", pattern) is True
 
 
 def test_matches_exclude_nested() -> None:
@@ -68,11 +73,10 @@ def test_get_packages_includes_test_modules_when_no_exclude() -> None:
     assert "pypatree.display.test" in submods
 
 
-def test_get_packages_skips_unimportable() -> None:
-    """Packages that fail to import are skipped."""
+def test_get_packages_reports_all_imports_failing() -> None:
     with patch("pypatree.discovery.safe_import", return_value=None):
-        result = get_packages()
-    assert result == {}
+        with pytest.raises(ImportError, match="All discovered packages failed"):
+            get_packages()
 
 
 def test_find_packages_src_as_package() -> None:
@@ -111,3 +115,72 @@ def test_find_packages_flat_layout() -> None:
             f.write("")
         packages = _find_packages_in_dir(tmpdir)
         assert "mypkg" in packages
+
+
+@pytest.mark.parametrize(
+    ("files", "expected"),
+    [
+        (["standalone.py"], ["standalone"]),
+        (["namespace/child/module.py"], ["namespace"]),
+        (["src/namespace/child/module.py"], ["namespace"]),
+        (["src/data.txt", "mypkg/__init__.py"], ["mypkg"]),
+        (["mypkg/__init__.py", "build_hook.py", "scripts/tool.py"], ["mypkg"]),
+    ],
+)
+def test_source_layouts(files: list[str], expected: list[str], tmp_path: Path) -> None:
+    for filename in files:
+        path = tmp_path / filename
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("")
+    assert _find_packages_in_dir(str(tmp_path)) == expected
+
+
+def test_editable_metadata_selects_only_this_project(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = tmp_path / "source é"
+    source.mkdir()
+    distributions = []
+    for name, directory, editable in [
+        ("local", source, True),
+        ("nested", source / "nested", True),
+        ("wheel", source, False),
+    ]:
+        info = tmp_path / f"{name}.dist-info"
+        info.mkdir()
+        (info / "direct_url.json").write_text(
+            json.dumps(
+                {
+                    "url": directory.as_uri(),
+                    "dir_info": {"editable": editable},
+                }
+            )
+        )
+        (info / "top_level.txt").write_text(name + "\n")
+        distributions.append(metadata.PathDistribution(info))
+    monkeypatch.setattr(metadata, "distributions", lambda: distributions)
+    monkeypatch.chdir(source)
+    assert _get_local_packages() == ["local"]
+
+
+def test_discovery_continues_after_broken_sibling(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    stub = Path(__file__).resolve().parents[2] / "tests/stubs/test_stub"
+    monkeypatch.chdir(stub)
+    packages = get_packages(exclude=DEFAULT_EXCLUDE, scope="test_stub")
+    assert "test_stub.branch.leaf" in packages["test_stub"]
+    assert "test_stub.sibling" not in packages["test_stub"]
+    assert "Unrelated sibling was imported" in caplog.text
+
+
+def test_scope_without_exclusions_includes_test_module() -> None:
+    assert (
+        "pypatree.discovery.test"
+        in get_packages(scope="pypatree.discovery")["pypatree.discovery"]
+    )
+
+
+def test_excluding_all_packages_has_recovery_hint() -> None:
+    with pytest.raises(ValueError, match="Use --exclude ''"):
+        get_packages(exclude=".*")

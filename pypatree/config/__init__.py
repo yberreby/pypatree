@@ -2,12 +2,11 @@
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Annotated, Optional
+from typing import Annotated, Literal, Optional
 
 import tyro.conf
 
-# Default excludes modules named "test" or starting with "test_"
-DEFAULT_EXCLUDE = r"^test$|^test_"
+DEFAULT_EXCLUDE = r"^tests?$|^test_"
 
 
 class DocstringMode(Enum):
@@ -35,6 +34,12 @@ class Config:
 
     show_defaults: bool = False
     """Show default argument values in signatures."""
+
+    flat: bool = False
+    """Print fully qualified names, one item per line, without tree guides or wrapping."""
+
+    color: Literal["auto", "always", "never"] = "auto"
+    """Color policy for either output format. Auto detects the terminal."""
 
     verbose: bool = False
     """Enable debug logging to stderr."""

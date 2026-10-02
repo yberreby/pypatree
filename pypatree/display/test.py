@@ -1,95 +1,97 @@
-import sys
-from types import ModuleType
-
 import pytest
+from rich.text import Text
 
 from pypatree.config import Config, DocstringMode
+from pypatree.tree import Tree
 
-from . import _highlight, print_tree, render_tree
-
-
-def test_empty_tree() -> None:
-    assert render_tree({}) == []
+from . import print_tree, render_tree
 
 
-def test_items_only() -> None:
-    tree = {"__items__": ["foo()", "bar()"]}
-    lines = render_tree(tree)
-    assert lines == ["├── foo()", "└── bar()"]
-
-
-def test_nested() -> None:
-    tree = {"sub": {"__items__": ["child()"]}}
-    lines = render_tree(tree)
-    assert lines == ["└── sub", "    └── child()"]
-
-
-def test_deep_nested() -> None:
-    tree = {"a": {"b": {"__items__": ["x()"]}}}
-    lines = render_tree(tree)
-    assert "a" in lines[0]
-    assert "b" in lines[1]
-    assert "x()" in lines[2]
-
-
-def test_print_tree(capsys) -> None:  # type: ignore[no-untyped-def]
-    cfg = Config(docstrings=DocstringMode.none)
-    print_tree("testpkg", {"__items__": ["x()"]}, cfg)
-    out = capsys.readouterr().out
-    assert "x()" in out
-
-
-def test_print_tree_with_docstrings(capsys) -> None:  # type: ignore[no-untyped-def]
-    cfg = Config(docstrings=DocstringMode.short)
-    # config module has a docstring, so this exercises the docstring label path
-    print_tree("pypatree", {"config": {"__items__": ["x()"]}}, cfg)
-    out = capsys.readouterr().out
-    assert "pypatree" in out
-    assert "config" in out
-
-
-def test_items_not_duplicated_with_nested_children() -> None:
-    """Items should appear once, not twice when module has both items AND children."""
-    tree = {
-        "__items__": ["root()"],
-        "child": {
-            "__items__": ["child_item()"],
-            "grandchild": {"__items__": ["deep()"]},
+def test_tree_renderers_agree(capsys: pytest.CaptureFixture[str]) -> None:
+    tree = Tree(
+        items=["root()"],
+        children={
+            "child": Tree(
+                items=["child_item()"],
+                children={
+                    "grandchild": Tree(items=["deep()"]),
+                },
+            ),
         },
-    }
-    lines = render_tree(tree)
-    # child_item() should appear exactly once
-    assert (
-        lines.count("    ├── child_item()") + lines.count("    └── child_item()") == 1
     )
-
-
-def test_highlight_preserves_signature() -> None:
-    """_highlight wraps in 'def' for syntax coloring but returns original signature."""
-    cases = [
-        "foo()",
-        "foo(x: int)",
-        "foo(x: int) -> None",
-        "foo(a: str, b: int = 1) -> bool",
-        "MyClass(name: str) -> None",
+    print_tree("pkg", tree, Config(docstrings=DocstringMode.none))
+    output = capsys.readouterr().out.splitlines()
+    expected = [
+        "pkg",
+        "├── root()",
+        "└── child",
+        "    ├── child_item()",
+        "    └── grandchild",
+        "        └── deep()",
     ]
-    for sig in cases:
-        result = _highlight(sig)
-        assert result.plain == sig, f"Expected {sig!r}, got {result.plain!r}"
+    assert output == expected
+    assert render_tree(tree) == expected[1:]
+    assert render_tree(Tree()) == []
+    assert render_tree(Tree(items=["x()"]), prefix="  ") == ["  └── x()"]
 
 
+@pytest.mark.parametrize("flat", [False, True])
 def test_docstrings_are_literal_text(
+    flat: bool, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root_doc = "An array [batch, width]."
+    child_doc = "Keep [red]tags[/red] and [/unexpected]."
+    tree = Tree(docstring=root_doc, children={"child": Tree(docstring=child_doc)})
+    print_tree("literal_docs", tree, Config(flat=flat))
+    output = capsys.readouterr().out
+    assert root_doc in output
+    assert child_doc in output
+
+
+def test_flat_output_has_qualified_unwrapped_names(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    root = ModuleType("literal_docs")
-    child = ModuleType("literal_docs.child")
-    root.__doc__ = "An array [batch, width]."
-    child.__doc__ = "Keep [red]tags[/red] and [/unexpected]."
-    monkeypatch.setitem(sys.modules, root.__name__, root)
-    monkeypatch.setitem(sys.modules, child.__name__, child)
+    monkeypatch.setenv("COLUMNS", "12")
+    monkeypatch.setenv("FORCE_COLOR", "1")
+    signature = "a_long_function(value: dict[str, list[int]], other: str) -> bool"
+    tree = Tree(children={"b": Tree(children={"c": Tree(items=[signature])})})
+    print_tree("a", tree, Config(flat=True, color="never"))
+    assert capsys.readouterr().out.splitlines() == [
+        "a",
+        "a.b",
+        "a.b.c",
+        f"a.b.c.{signature}",
+    ]
 
-    print_tree(root.__name__, {"child": {}}, Config())
 
+@pytest.mark.parametrize("flat", [False, True])
+def test_color_is_independent_of_format(
+    flat: bool, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("NO_COLOR", "1")
+    tree = Tree(items=["visible(value: int) -> str"])
+    print_tree("pkg", tree, Config(flat=flat, color="always"))
+    colored = capsys.readouterr().out
+    assert "\x1b[" in colored
+    print_tree("pkg", tree, Config(flat=flat, color="never"))
+    plain = capsys.readouterr().out
+    assert "\x1b[" not in plain
+    assert Text.from_ansi(colored).plain.splitlines() == plain.splitlines()
+
+
+@pytest.mark.parametrize("flat", [False, True])
+def test_full_docstrings_and_failed_imports(
+    flat: bool, capsys: pytest.CaptureFixture[str]
+) -> None:
+    tree = Tree(
+        docstring="First line.\nSecond line.", children={"broken": Tree(failed=True)}
+    )
+    print_tree("pkg", tree, Config(flat=flat, docstrings=DocstringMode.full))
     output = capsys.readouterr().out
-    assert root.__doc__ in output
-    assert child.__doc__ in output
+    assert "First line." in output and "Second line." in output
+    assert "broken [import failed]" in output
+    if flat:
+        assert output.splitlines() == [
+            r"pkg  First line.\nSecond line.",
+            "pkg.broken [import failed]",
+        ]

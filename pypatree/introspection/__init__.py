@@ -5,24 +5,27 @@ import re
 import sys
 import types
 from collections import abc
+from contextlib import redirect_stdout
 from types import ModuleType
 from typing import Annotated, Callable, Literal, Optional, Union, get_args, get_origin
 
 log = logging.getLogger(__name__)
 
 
-def safe_import(modname: str) -> Optional[ModuleType]:
-    """Import a module, returning None on any failure."""
+def import_module(modname: str) -> ModuleType:
     try:
-        return importlib.import_module(modname)
-    except ImportError as e:
-        log.warning("Could not import %r: %s", modname, e)
-    except SystemExit as e:
-        log.error("Skipping %r (module called sys.exit): %s", modname, e)
-    except Exception as e:
-        log.error(
-            "Skipping %r (unexpected error): %s: %s", modname, type(e).__name__, e
-        )
+        with redirect_stdout(sys.stderr):
+            return importlib.import_module(modname)
+    except SystemExit as error:
+        raise ImportError(f"{modname!r} called sys.exit({error.code!r})") from error
+
+
+def safe_import(modname: str) -> Optional[ModuleType]:
+    """Import a module, logging import failures to stderr."""
+    try:
+        return import_module(modname)
+    except Exception as error:
+        log.error("Could not import %r: %s: %s", modname, type(error).__name__, error)
     return None
 
 
@@ -72,7 +75,7 @@ _MAX_ONELINER = 80
 
 
 def _format_params(
-    params: list[inspect.Parameter], max_len: int, show_defaults: bool
+    params: list[inspect.Parameter], max_len: Optional[int], show_defaults: bool
 ) -> str:
     """Format parameters, using multiple lines if needed.
 
@@ -111,15 +114,23 @@ def _format_params(
         parts.append("/")
 
     oneliner = f"({', '.join(parts)})"
-    if len(oneliner) <= max_len:
+    if max_len is None or len(oneliner) <= max_len:
         return oneliner
     # One arg per line
     return "(\n    " + ",\n    ".join(parts) + ",\n)"
 
 
-def format_signature(obj: Union[Callable, type], show_defaults: bool) -> str:
+def format_signature(
+    obj: Union[Callable, type],
+    show_defaults: bool,
+    *,
+    max_width: Optional[int] = _MAX_ONELINER,
+    name: Optional[str] = None,
+) -> str:
     """Format function or class with full signature."""
-    name = getattr(obj, "__name__", type(obj).__name__)
+    if name is None:
+        name = getattr(obj, "__name__", type(obj).__name__)
+    assert isinstance(name, str)
     try:
         sig = inspect.signature(obj)
     except (ValueError, TypeError) as error:
@@ -132,7 +143,7 @@ def format_signature(obj: Union[Callable, type], show_defaults: bool) -> str:
     # Format with proper line breaks for long signatures
     params_str = _format_params(
         list(sig.parameters.values()),
-        max_len=_MAX_ONELINER - len(name) - len(ret_str),
+        max_len=None if max_width is None else max_width - len(name) - len(ret_str),
         show_defaults=show_defaults,
     )
     return f"{name}{params_str}{ret_str}"
@@ -152,7 +163,11 @@ def get_module_docstring(modname: str, short: bool = True) -> Optional[str]:
 
 
 def get_module_items(
-    modname: str, exclude: Optional[str], show_defaults: bool
+    modname: str,
+    exclude: Optional[str],
+    show_defaults: bool,
+    *,
+    max_width: Optional[int] = _MAX_ONELINER,
 ) -> list[str]:
     """Extract public functions and classes with signatures from a module."""
     pattern = re.compile(exclude) if exclude else None
@@ -167,9 +182,12 @@ def get_module_items(
         if pattern and pattern.search(name):
             continue
         obj = getattr(mod, name)
-        if getattr(obj, "__module__", None) != modname:
-            continue
         if inspect.isfunction(obj) or inspect.isclass(obj):
-            items.append(format_signature(obj, show_defaults=show_defaults))
+            if obj.__module__ == modname:
+                items.append(
+                    format_signature(
+                        obj, show_defaults=show_defaults, max_width=max_width, name=name
+                    )
+                )
 
     return sorted(items)

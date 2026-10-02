@@ -3,7 +3,9 @@
 
 import sys
 
-from lib import PYTHON_VERSION, ROOT, run, run_pypatree_on_repo
+import tyro
+
+from lib import PYTHON_VERSION, ROOT, checkout_repo, run, run_pypatree_on_repo
 
 TEMPLATE = ROOT / "README.md.in"
 OUTPUT = ROOT / "README.md"
@@ -11,6 +13,29 @@ OUTPUT = ROOT / "README.md"
 SHOWCASE_REPO = "https://github.com/encode/httpx.git"
 SHOWCASE_REVISION = "b5addb64f0161ff6bfe94c124ef76f6a1fba5254"
 SHOWCASE_CONSTRAINTS = ROOT / "scripts" / "showcase-constraints.txt"
+
+
+def lock_showcase() -> None:
+    with checkout_repo(SHOWCASE_REPO, revision=SHOWCASE_REVISION) as source:
+        run(
+            "uv",
+            "pip",
+            "compile",
+            str(ROOT / "pyproject.toml"),
+            str(source / "pyproject.toml"),
+            "--extra",
+            "cli",
+            "--python-version",
+            PYTHON_VERSION,
+            "--no-header",
+            "--no-annotate",
+            "--no-emit-package",
+            "pypatree",
+            "--no-emit-package",
+            "httpx",
+            "--output-file",
+            str(SHOWCASE_CONSTRAINTS),
+        )
 
 
 def generate() -> str:
@@ -26,6 +51,13 @@ def generate() -> str:
     self_output = run("uv", "run", "pypatree", cwd=ROOT).stdout.decode().strip()
     template = template.replace("{{PYPATREE_OUTPUT}}", self_output)
 
+    flat_output = (
+        run("uv", "run", "pypatree", "pypatree.introspection", "--flat", cwd=ROOT)
+        .stdout.decode()
+        .strip()
+    )
+    template = template.replace("{{FLAT_OUTPUT}}", flat_output)
+
     # External repo showcase
     if "{{SHOWCASE_OUTPUT}}" in template:
         name = SHOWCASE_REPO.split("/")[-1].removesuffix(".git")
@@ -34,6 +66,7 @@ def generate() -> str:
             SHOWCASE_REPO,
             revision=SHOWCASE_REVISION,
             constraints=SHOWCASE_CONSTRAINTS,
+            extras=("cli",),
         ).strip()
         template = template.replace("{{SHOWCASE_NAME}}", name)
         template = template.replace("{{SHOWCASE_URL}}", url)
@@ -44,10 +77,12 @@ def generate() -> str:
     return "\n".join(line.rstrip() for line in template.splitlines()) + "\n"
 
 
-def main() -> int:
+def main(check: bool = False, update_constraints: bool = False) -> int:
+    if update_constraints:
+        lock_showcase()
     generated = generate()
 
-    if "--check" in sys.argv:
+    if check:
         if not OUTPUT.exists():
             print("README.md missing. Run: uv run just regen-readme")
             return 1
@@ -62,4 +97,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(tyro.cli(main))
