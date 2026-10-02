@@ -1,7 +1,12 @@
 from dataclasses import dataclass, field
 from typing import Optional
 
-from pypatree.introspection import get_module_items, safe_import
+from pypatree.introspection import (
+    ErrorHandler,
+    get_module_items,
+    log_error,
+    safe_import,
+)
 
 
 @dataclass
@@ -28,6 +33,7 @@ def build_tree(
     show_defaults: bool,
     *,
     max_width: Optional[int] = None,
+    on_error: ErrorHandler = log_error,
 ) -> Tree:
     tree = Tree()
     for modname in sorted(set(submods)):
@@ -37,7 +43,7 @@ def build_tree(
         node = tree
         for part in parts:
             node = node.children.setdefault(part, Tree())
-        module = safe_import(modname)
+        module = safe_import(modname, on_error=on_error)
         if module is None:
             node.failed = True
             continue
@@ -47,5 +53,6 @@ def build_tree(
             exclude=exclude,
             show_defaults=show_defaults,
             max_width=None if max_width is None else max_width - 4 * (len(parts) + 1),
+            on_error=on_error,
         )
     return tree

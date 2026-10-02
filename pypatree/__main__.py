@@ -1,6 +1,7 @@
 import logging
 import re
 import sys
+import traceback
 from pathlib import Path
 
 import tyro
@@ -20,16 +21,15 @@ def _setup_logging(verbose: bool) -> None:
     )
 
 
-class _Diagnostics(logging.Handler):
-    failed: bool = False
-
-    def emit(self, record: logging.LogRecord) -> None:
-        self.failed = True
-
-
-def run(cfg: Config) -> None:
+def run(cfg: Config) -> bool:
     """Display module tree with public functions/classes."""
-    packages = get_packages(cfg.exclude, scope=cfg.scope)
+    errors: list[str] = []
+
+    def report_error(message: str) -> None:
+        errors.append(message)
+        print(f"pypatree: {message}", file=sys.stderr)
+
+    packages = get_packages(cfg.exclude, scope=cfg.scope, on_error=report_error)
     if not packages:
         raise ValueError(
             f"No local editable packages found in {Path.cwd()}. "
@@ -38,16 +38,22 @@ def run(cfg: Config) -> None:
         )
 
     for pkg_name, submods in sorted(packages.items()):
-        if not submods:
-            continue
         tree = build_tree(
             submods,
             pkg_name=pkg_name,
             exclude=cfg.exclude,
             show_defaults=cfg.show_defaults,
             max_width=None if cfg.flat else Console().width,
+            on_error=report_error,
         )
         print_tree(pkg_name, tree, cfg)
+    if errors:
+        print(
+            "Output is incomplete. Install missing dependencies or fix the reported errors; "
+            "narrow inspection with a module scope or --exclude REGEX.",
+            file=sys.stderr,
+        )
+    return not errors
 
 
 def main() -> int:
@@ -55,28 +61,22 @@ def main() -> int:
         Config, description="Display module tree with public functions/classes."
     )
     _setup_logging(cfg.verbose)
-    diagnostics = _Diagnostics(level=logging.ERROR)
-    logger = logging.getLogger("pypatree")
-    logger.addHandler(diagnostics)
     try:
-        run(cfg)
+        return 0 if run(cfg) else 1
     except re.error as error:
-        logger.error(
-            "Invalid --exclude regular expression: %s. Check the pattern; see --help.",
-            error,
+        print(
+            f"Invalid --exclude regular expression: {error}. Check the pattern; see --help.",
+            file=sys.stderr,
         )
     except Exception as error:
-        logger.error("%s: %s", type(error).__name__, error, exc_info=cfg.verbose)
-        logger.error("Use --verbose for the traceback and --help for usage.")
-    else:
-        if diagnostics.failed:
-            logger.error(
-                "Output is incomplete. Fix the reported imports, or narrow inspection "
-                "with a module scope or --exclude REGEX. Use --verbose for details."
+        print(f"{type(error).__name__}: {error}", file=sys.stderr)
+        if cfg.verbose:
+            traceback.print_exc()
+        else:
+            print(
+                "Use --verbose for the traceback and --help for usage.", file=sys.stderr
             )
-    finally:
-        logger.removeHandler(diagnostics)
-    return int(diagnostics.failed)
+    return 1
 
 
 if __name__ == "__main__":

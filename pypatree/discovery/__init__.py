@@ -9,7 +9,7 @@ from types import ModuleType
 from typing import Optional
 from urllib.parse import unquote, urlsplit
 
-from pypatree.introspection import import_module, safe_import
+from pypatree.introspection import ErrorHandler, import_module, log_error, safe_import
 
 log = logging.getLogger(__name__)
 
@@ -18,11 +18,13 @@ def _module_names(paths: Iterable[str]) -> dict[str, bool]:
     paths = list(paths)
     names = {module.name: module.ispkg for module in pkgutil.iter_modules(paths)}
     for directory in paths:
+        if not Path(directory).is_dir():
+            continue
         for child in Path(directory).iterdir():
             if (
                 child.name not in names
                 and child.name.isidentifier()
-                and not child.name.startswith("_")
+                and child.name != "__pycache__"
                 and child.is_dir()
                 and any(child.rglob("*.py"))
             ):
@@ -90,41 +92,50 @@ def _matches_exclude(name: str, pattern: Optional[re.Pattern[str]]) -> bool:
     return any(pattern.search(seg) for seg in name.split("."))
 
 
-def _submodules(pkg: ModuleType, pattern: Optional[re.Pattern[str]]) -> list[str]:
+def _submodules(
+    pkg: ModuleType, pattern: Optional[re.Pattern[str]], on_error: ErrorHandler
+) -> list[str]:
     pkg_name = pkg.__name__
     submods = [pkg_name]
     if not hasattr(pkg, "__path__"):
         return submods
 
-    visited: set[Path] = set()
-
-    def walk(package_name: str, paths: Iterable[str]) -> None:
-        fresh_paths = []
+    def walk(
+        package_name: str, paths: Iterable[str], *, ancestors: frozenset[Path]
+    ) -> None:
+        fresh_paths: dict[Path, str] = {}
         for path in paths:
             resolved = Path(path).resolve()
-            if resolved not in visited:
-                visited.add(resolved)
-                fresh_paths.append(path)
-        for name, is_package in sorted(_module_names(fresh_paths).items()):
+            if resolved in ancestors:
+                on_error(
+                    f"Recursive package path while inspecting {package_name!r}: {resolved}"
+                )
+            else:
+                fresh_paths[resolved] = path
+        ancestors = ancestors.union(fresh_paths)
+        for name, is_package in sorted(_module_names(fresh_paths.values()).items()):
             modname = f"{package_name}.{name}"
             if pattern and pattern.search(name):
                 log.debug("Excluding module: %s", modname)
                 continue
             if is_package:
-                child = safe_import(modname)
+                child = safe_import(modname, on_error=on_error)
                 if child is None:
                     continue
                 submods.append(modname)
-                walk(modname, child.__path__)
+                walk(modname, child.__path__, ancestors=ancestors)
             else:
                 submods.append(modname)
 
-    walk(pkg_name, pkg.__path__)
+    walk(pkg_name, pkg.__path__, ancestors=frozenset())
     return submods
 
 
 def get_packages(
-    exclude: Optional[str] = None, scope: Optional[str] = None
+    exclude: Optional[str] = None,
+    scope: Optional[str] = None,
+    *,
+    on_error: ErrorHandler = log_error,
 ) -> dict[str, list[str]]:
     """Find importable packages in CWD and their submodules."""
     pattern = re.compile(exclude) if exclude else None
@@ -143,7 +154,9 @@ def get_packages(
         if _matches_exclude(scope[len(root) + 1 :], pattern) and scope != root:
             raise ValueError(f"Scope {scope!r} is excluded by --exclude {exclude!r}")
         try:
-            result[scope] = _submodules(import_module(scope), pattern)
+            result[scope] = _submodules(
+                import_module(scope), pattern, on_error=on_error
+            )
         except ModuleNotFoundError as error:
             if error.name and (
                 scope == error.name or scope.startswith(f"{error.name}.")
@@ -159,12 +172,12 @@ def get_packages(
             "Use --exclude '' to include them."
         )
     for pkg_name in included:
-        pkg = safe_import(pkg_name)
+        pkg = safe_import(pkg_name, on_error=on_error)
         if pkg is None:
             continue
 
         log.debug("Walking package: %s", pkg_name)
-        result[pkg_name] = _submodules(pkg, pattern)
+        result[pkg_name] = _submodules(pkg, pattern, on_error=on_error)
 
     if included and not result:
         raise ImportError(

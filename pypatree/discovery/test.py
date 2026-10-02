@@ -3,16 +3,22 @@
 import os
 import json
 import importlib.metadata as metadata
+import importlib
 import re
 import tempfile
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
 from pypatree.config import DEFAULT_EXCLUDE
 
-from . import _find_packages_in_dir, _get_local_packages, _matches_exclude, get_packages
+from . import (
+    _find_packages_in_dir,
+    _get_local_packages,
+    _matches_exclude,
+    _module_names,
+    get_packages,
+)
 
 
 def test_matches_exclude_exact_test() -> None:
@@ -73,10 +79,12 @@ def test_get_packages_includes_test_modules_when_no_exclude() -> None:
     assert "pypatree.display.test" in submods
 
 
-def test_get_packages_reports_all_imports_failing() -> None:
-    with patch("pypatree.discovery.safe_import", return_value=None):
-        with pytest.raises(ImportError, match="All discovered packages failed"):
-            get_packages()
+def test_get_packages_reports_all_imports_failing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.chdir(Path(__file__).resolve().parents[2] / "tests/stubs/brokenpkg")
+    with pytest.raises(ImportError, match="All discovered packages failed"):
+        get_packages()
 
 
 def test_find_packages_src_as_package() -> None:
@@ -173,6 +181,16 @@ def test_discovery_continues_after_broken_sibling(
     assert "test_stub.sibling" not in packages["test_stub"]
     assert "Unrelated sibling was imported" in caplog.text
 
+    root = importlib.import_module("test_stub")
+    branch = importlib.import_module("test_stub.branch")
+    monkeypatch.setattr(branch, "__path__", root.__path__)
+    errors: list[str] = []
+    packages = get_packages(
+        exclude=DEFAULT_EXCLUDE, scope="test_stub", on_error=errors.append
+    )
+    assert packages["test_stub"] == ["test_stub", "test_stub.branch"]
+    assert any("Recursive package path" in error for error in errors)
+
 
 def test_scope_without_exclusions_includes_test_module() -> None:
     assert (
@@ -184,3 +202,12 @@ def test_scope_without_exclusions_includes_test_module() -> None:
 def test_excluding_all_packages_has_recovery_hint() -> None:
     with pytest.raises(ValueError, match="Use --exclude ''"):
         get_packages(exclude=".*")
+
+
+def test_nonexistent_search_paths_and_private_namespaces(tmp_path: Path) -> None:
+    private = tmp_path / "_private"
+    private.mkdir()
+    (private / "leaf.py").write_text("")
+    assert _module_names([str(tmp_path), str(tmp_path / "missing")]) == {
+        "_private": True
+    }

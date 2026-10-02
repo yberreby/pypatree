@@ -61,7 +61,7 @@ def test_editable_layouts_and_escaped_paths(
     source = tmp_path / "project space é %"
     filename = package if package.endswith(".py") else f"{package}/__init__.py"
     if package == "namespace":
-        filename = "namespace/child/__init__.py"
+        filename = "namespace/_private/leaf.py"
     install_project(
         cli=cli,
         source=source,
@@ -73,7 +73,7 @@ def test_editable_layouts_and_escaped_paths(
     module = {
         "src/example": "example",
         "example.py": "example",
-        "namespace": "namespace.child",
+        "namespace": "namespace._private.leaf",
     }.get(package, package)
     assert f"{module}.visible(value: int) -> int" in result.stdout.splitlines()
     assert result.stderr == ""
@@ -170,3 +170,43 @@ def test_invalid_regex_has_actionable_failure(cli: Path, tmp_path: Path) -> None
     assert "Invalid --exclude regular expression" in result.stderr
     assert "--help" in result.stderr
     assert "Traceback" not in result.stderr
+
+
+def test_project_logging_configuration_cannot_hide_import_failure(
+    cli: Path, tmp_path: Path
+) -> None:
+    install_project(
+        cli=cli,
+        source=tmp_path,
+        package="example",
+        files={
+            "example/__init__.py": "import logging\nlogging.disable(logging.CRITICAL)\ndef visible(): pass\n",
+            "example/child/__init__.py": "raise RuntimeError('broken child')\n",
+        },
+    )
+    result = invoke(cli, tmp_path)
+    assert result.returncode != 0
+    assert "broken child" in result.stderr
+    assert "Output is incomplete" in result.stderr
+
+
+def test_recursive_package_paths_have_a_bounded_failure(
+    cli: Path, tmp_path: Path
+) -> None:
+    install_project(
+        cli=cli,
+        source=tmp_path,
+        package="example",
+        files={
+            "example/__init__.py": "def visible(): pass\n",
+            "example/loop/__init__.py": "from pathlib import Path\n__path__ = [str(Path(__file__).parents[1])]\n",
+        },
+    )
+    result = invoke(cli, tmp_path, "--flat")
+    assert result.returncode != 0
+    assert result.stdout.splitlines() == [
+        "example",
+        "example.visible()",
+        "example.loop",
+    ]
+    assert "Recursive package path" in result.stderr

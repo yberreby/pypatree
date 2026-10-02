@@ -7,19 +7,21 @@ import tempfile
 from pathlib import Path
 from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Any, Optional
+from typing import Optional, Union
 
 ROOT = Path(__file__).parent.parent
 PYPATREE = f"pypatree@{ROOT}"
 PYTHON_VERSION = (ROOT / ".python-version").read_text().strip()
 
 
-def run(*cmd: str, **kw: Any) -> subprocess.CompletedProcess[bytes]:
+def run(
+    *cmd: str, cwd: Optional[Union[str, Path]] = None, timeout: int = 120
+) -> subprocess.CompletedProcess[bytes]:
     env = {k: v for k, v in os.environ.items() if k != "VIRTUAL_ENV"}
-    result = subprocess.run(cmd, capture_output=True, env=env, **kw)
+    result = subprocess.run(cmd, cwd=cwd, timeout=timeout, capture_output=True, env=env)
     if result.returncode:
         raise RuntimeError(
-            f"{cmd!r} failed in {kw.get('cwd', Path.cwd())} "
+            f"{cmd!r} failed in {cwd or Path.cwd()} "
             f"(exit {result.returncode}):\n"
             f"{result.stdout.decode(errors='replace')}{result.stderr.decode(errors='replace')}"
         )
@@ -50,7 +52,6 @@ def checkout_repo(repo_url: str, revision: Optional[str] = None) -> Iterator[Pat
 
 def run_pypatree_on_repo(
     repo_url: str,
-    timeout: int = 120,
     revision: Optional[str] = None,
     constraints: Optional[Path] = None,
     extras: tuple[str, ...] = (),
@@ -63,11 +64,11 @@ def run_pypatree_on_repo(
         if constraints is not None:
             install.extend(["--constraints", str(constraints)])
         package = f".[{','.join(extras)}]" if extras else "."
-        run(*install, "-e", package, PYPATREE, cwd=dest, timeout=timeout)
+        run(*install, "-e", package, PYPATREE, cwd=dest)
         command = ["uv", "run", "--no-sync", "pypatree"]
         if scope is not None:
             command.append(scope)
-        output = run(*command, cwd=dest, timeout=timeout).stdout.decode()
+        output = run(*command, cwd=dest).stdout.decode()
         if not output.strip():
             raise RuntimeError(f"pypatree produced no tree for {repo_url}")
         return output

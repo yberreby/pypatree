@@ -7,9 +7,20 @@ import types
 from collections import abc
 from contextlib import redirect_stdout
 from types import ModuleType
-from typing import Annotated, Callable, Literal, Optional, Union, get_args, get_origin
+from typing import (
+    Annotated,
+    Callable,
+    ForwardRef,
+    Literal,
+    Optional,
+    Union,
+    get_args,
+    get_origin,
+)
 
 log = logging.getLogger(__name__)
+ErrorHandler = Callable[[str], None]
+log_error: ErrorHandler = log.error
 
 
 def import_module(modname: str) -> ModuleType:
@@ -20,12 +31,14 @@ def import_module(modname: str) -> ModuleType:
         raise ImportError(f"{modname!r} called sys.exit({error.code!r})") from error
 
 
-def safe_import(modname: str) -> Optional[ModuleType]:
+def safe_import(
+    modname: str, *, on_error: ErrorHandler = log_error
+) -> Optional[ModuleType]:
     """Import a module, logging import failures to stderr."""
     try:
         return import_module(modname)
     except Exception as error:
-        log.error("Could not import %r: %s: %s", modname, type(error).__name__, error)
+        on_error(f"Could not import {modname!r}: {type(error).__name__}: {error}")
     return None
 
 
@@ -35,6 +48,10 @@ _OBJECT_ADDR_RE = re.compile(r" at 0x[0-9a-fA-F]+>")
 def _format_annotation(annotation: object) -> str:
     if isinstance(annotation, str):
         return annotation
+    if isinstance(annotation, ForwardRef):
+        return annotation.__forward_arg__
+    if annotation is Ellipsis:
+        return "..."
     if annotation is type(None):
         return "None"
     origin = get_origin(annotation)
@@ -62,10 +79,10 @@ def _format_parameter(parameter: inspect.Parameter, show_defaults: bool) -> str:
     result = str(parameter.replace(annotation=empty, default=empty))
     if parameter.annotation is not empty:
         result += f": {_format_annotation(parameter.annotation)}"
-    if show_defaults and parameter.default is not empty:
+    if parameter.default is not empty:
         separator = " = " if parameter.annotation is not empty else "="
-        default = repr(parameter.default)
-        if not isinstance(parameter.default, str):
+        default = repr(parameter.default) if show_defaults else "..."
+        if show_defaults and not isinstance(parameter.default, str):
             default = _OBJECT_ADDR_RE.sub(">", default)
         result += separator + default
     return result
@@ -132,7 +149,16 @@ def format_signature(
         name = getattr(obj, "__name__", type(obj).__name__)
     assert isinstance(name, str)
     try:
-        sig = inspect.signature(obj)
+        annotations = (
+            {
+                "annotation_format": importlib.import_module(
+                    "annotationlib"
+                ).Format.FORWARDREF
+            }
+            if sys.version_info >= (3, 14)
+            else {}
+        )
+        sig = inspect.signature(obj, **annotations)
     except (ValueError, TypeError) as error:
         log.warning("Could not inspect signature for %s: %s", name, error)
         return f"{name}(...)"
@@ -168,20 +194,20 @@ def get_module_items(
     show_defaults: bool,
     *,
     max_width: Optional[int] = _MAX_ONELINER,
+    on_error: ErrorHandler = log_error,
 ) -> list[str]:
     """Extract public functions and classes with signatures from a module."""
     pattern = re.compile(exclude) if exclude else None
-    mod = safe_import(modname)
+    mod = safe_import(modname, on_error=on_error)
     if mod is None:
         return []
 
     items = []
-    for name in dir(mod):
+    for name, obj in list(vars(mod).items()):
         if name.startswith("_"):
             continue
         if pattern and pattern.search(name):
             continue
-        obj = getattr(mod, name)
         if inspect.isfunction(obj) or inspect.isclass(obj):
             if obj.__module__ == modname:
                 items.append(

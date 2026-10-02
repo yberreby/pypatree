@@ -1,7 +1,7 @@
 import sys
 import types
 from operator import or_
-from typing import Annotated, Callable, Literal, Optional
+from typing import Annotated, Callable, ForwardRef, Literal, Optional
 from unittest.mock import patch
 
 import pytest
@@ -15,14 +15,13 @@ def test_format_signature_function() -> None:
     def example(x: str, y: int = 1) -> bool:
         return True
 
-    assert example("a") is True
     assert (
         format_signature(example, show_defaults=True)
         == "example(x: str, y: int = 1) -> bool"
     )
     assert (
         format_signature(example, show_defaults=False)
-        == "example(x: str, y: int) -> bool"
+        == "example(x: str, y: int = ...) -> bool"
     )
 
 
@@ -31,7 +30,6 @@ def test_format_signature_class() -> None:
         def __init__(self, name: str) -> None:
             self.name = name
 
-    assert Example("test").name == "test"
     assert format_signature(Example, show_defaults=True) == "Example(name: str) -> None"
 
 
@@ -42,9 +40,8 @@ def test_format_signature_unavailable(caplog: pytest.LogCaptureFixture) -> None:
 
 def test_format_signature_unwraps_annotated() -> None:
     def fn(x: Annotated[str, "metadata"]) -> None:
-        assert isinstance(x, str)
+        pass
 
-    fn("test")
     assert format_signature(fn, True) == "fn(x: str) -> None"
 
 
@@ -52,50 +49,44 @@ def test_format_signature_unwraps_nested_annotated() -> None:
     from typing import List
 
     def fn(x: List[Annotated[str, "meta"]]) -> None:
-        assert x == ["a"]
+        pass
 
-    fn(["a"])
     assert format_signature(fn, True) == "fn(x: list[str]) -> None"
 
 
 def test_format_signature_strips_quotes() -> None:
     # Simulates stringified annotations from 'from __future__ import annotations'
     def fn(x: "str", y: "list[int]") -> "None":  # noqa: F821
-        assert isinstance(x, str) and isinstance(y, list)
+        pass
 
-    fn("a", [1])
     assert format_signature(fn, True) == "fn(x: str, y: list[int]) -> None"
 
 
 def test_format_signature_keyword_only() -> None:
     def fn(*, x: int, y: str) -> None:
-        assert x == 1 and y == "a"
+        pass
 
-    fn(x=1, y="a")
     assert format_signature(fn, True) == "fn(*, x: int, y: str) -> None"
 
 
 def test_format_signature_positional_only() -> None:
     def fn(x: int, /, y: str) -> None:
-        assert x == 1 and y == "a"
+        pass
 
-    fn(1, "a")
     assert format_signature(fn, True) == "fn(x: int, /, y: str) -> None"
 
 
 def test_format_signature_all_positional_only() -> None:
     def fn(x: int, y: str, /) -> None:
-        assert x == 1 and y == "a"
+        pass
 
-    fn(1, "a")
     assert format_signature(fn, True) == "fn(x: int, y: str, /) -> None"
 
 
 def test_format_signature_var_positional() -> None:
     def fn(*args: int, x: str) -> None:
-        assert args == (1, 2) and x == "a"
+        pass
 
-    fn(1, 2, x="a")
     assert format_signature(fn, True) == "fn(*args: int, x: str) -> None"
 
 
@@ -109,15 +100,12 @@ def test_get_module_items_excludes_test_functions() -> None:
     assert not any("test_" in i for i in items)
 
 
-def test_get_module_docstring_short() -> None:
-    doc = get_module_docstring("pypatree", short=True)
-    assert doc is not None
-    assert "\n" not in doc
-
-
-def test_get_module_docstring_full() -> None:
-    doc = get_module_docstring("pypatree", short=False)
-    assert doc is not None
+def test_get_module_docstring_modes(monkeypatch: pytest.MonkeyPatch) -> None:
+    module = types.ModuleType("docstring_modes")
+    module.__doc__ = "First line.\nSecond line."
+    monkeypatch.setitem(sys.modules, module.__name__, module)
+    assert get_module_docstring(module.__name__, short=True) == "First line."
+    assert get_module_docstring(module.__name__, short=False) == module.__doc__
 
 
 def test_get_module_docstring_not_found() -> None:
@@ -140,9 +128,8 @@ def test_format_signature_strips_memory_addresses() -> None:
     sentinel = object()
 
     def fn(x: object = sentinel) -> None:
-        assert x is sentinel
+        pass
 
-    fn()
     sig = format_signature(fn, show_defaults=True)
     assert "0x" not in sig
     assert "object>" in sig
@@ -208,3 +195,40 @@ def test_signature_uses_class_call_contract() -> None:
 
     assert format_signature(Constructed, False) == "Constructed(value: int)"
     assert format_signature(Empty, False) == "Empty()"
+
+
+def test_signature_preserves_ellipsis_and_forward_references() -> None:
+    def fn(items: tuple[int, ...], callback: Callable[..., str]):
+        pass
+
+    assert (
+        format_signature(fn, True)
+        == "fn(items: tuple[int, ...], callback: Callable[..., str])"
+    )
+    fn.__annotations__ = {
+        "items": ForwardRef("Missing"),
+        "return": ForwardRef("Missing"),
+    }
+    assert format_signature(fn, True) == "fn(items: Missing, callback) -> Missing"
+
+
+@pytest.mark.skipif(
+    sys.version_info < (3, 14), reason="Deferred annotations require Python 3.14"
+)
+def test_unresolved_deferred_annotations_are_displayed() -> None:
+    module = types.ModuleType("deferred")
+    exec("def fn(value: Missing) -> Missing: pass", module.__dict__)
+    assert format_signature(module.fn, True) == "fn(value: Missing) -> Missing"
+
+
+def test_module_namespace_uses_bound_names_without_lazy_lookup(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = types.ModuleType("namespace_probe")
+    exec(
+        "def _implementation(value: int): pass\nvisible = _implementation\n"
+        "def __dir__(): raise RuntimeError('dynamic directory executed')\n",
+        module.__dict__,
+    )
+    monkeypatch.setitem(sys.modules, module.__name__, module)
+    assert get_module_items(module.__name__, None, False) == ["visible(value: int)"]

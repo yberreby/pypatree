@@ -48,3 +48,18 @@ def test_failed_import_runs_once(tmp_path, monkeypatch: pytest.MonkeyPatch) -> N
 
 def test_empty_tree() -> None:
     assert build_tree([], "pkg", exclude=None, show_defaults=False) == Tree()
+
+
+def test_module_name_does_not_collide_with_tree_data(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    for name in ["collision", "collision.__items__"]:
+        monkeypatch.setitem(sys.modules, name, ModuleType(name))
+    tree = build_tree(
+        ["collision", "collision.__items__"],
+        "collision",
+        exclude=None,
+        show_defaults=False,
+    )
+    assert "__items__" in tree.children
+    assert not tree.children["__items__"].failed

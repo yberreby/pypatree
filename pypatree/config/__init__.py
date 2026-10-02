@@ -27,13 +27,13 @@ class Config:
     """Module path to scope to (e.g., 'mypkg.submodule')."""
 
     exclude: Optional[str] = DEFAULT_EXCLUDE
-    """Regex to exclude module segments (default: test modules). Use '' for none."""
+    """Regex to exclude module segments and item names (default: tests). Use '' for none."""
 
     docstrings: DocstringMode = DocstringMode.short
     """Show module docstrings: none, short (first line), or full."""
 
     show_defaults: bool = False
-    """Show default argument values in signatures."""
+    """Show default values in signatures. Otherwise, = ... marks optional parameters."""
 
     flat: bool = False
     """Print fully qualified names, one item per line, without tree guides or wrapping."""

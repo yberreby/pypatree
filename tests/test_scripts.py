@@ -21,6 +21,20 @@ def test_run_reports_subprocess_failure(tmp_path: Path) -> None:
     assert str(tmp_path) in str(error.value)
 
 
+def test_run_preserves_successful_stderr(capsys: pytest.CaptureFixture[str]) -> None:
+    run(
+        sys.executable,
+        "-c",
+        "import sys; sys.stderr.write('partial inspection warning')",
+    )
+    assert "partial inspection warning" in capsys.readouterr().err
+
+
+def test_run_failure_preserves_stdout() -> None:
+    with pytest.raises(RuntimeError, match="diagnostic on stdout"):
+        run(sys.executable, "-c", "print('diagnostic on stdout'); raise SystemExit(1)")
+
+
 def test_showcase_uses_requested_revision_and_project_python(tmp_path: Path) -> None:
     source = tmp_path / "example"
     package = source / "example"
