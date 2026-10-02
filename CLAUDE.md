@@ -28,6 +28,10 @@ Do not allow ugliness to creep in.
 
 Output format and color are orthogonal controls [user, 2026-10-02].
 
+Use `scripts.lib.run` for script and test subprocesses that operate on temporary
+repositories. It isolates repository-local Git state inherited from hooks
+[regression reproduced in a linked worktree, 2026-10-02].
+
 Code should be minimal, modular, orthogonal, easy to understand, maintain, and extend.
 
 Tests should be useful. Do not write tests that duplicate implementation details and are exceedingly-tightly coupled (e.g. checking that a default value is what we set: BAD).

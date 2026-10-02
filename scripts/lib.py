@@ -12,12 +12,25 @@ from typing import Optional, Union
 ROOT = Path(__file__).parent.parent
 PYPATREE = f"pypatree@{ROOT}"
 PYTHON_VERSION = (ROOT / ".python-version").read_text().strip()
+GIT_LOCAL_ENV_VARS = frozenset(
+    subprocess.run(
+        ["git", "rev-parse", "--local-env-vars"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.splitlines()
+)
 
 
 def run(
     *cmd: str, cwd: Optional[Union[str, Path]] = None, timeout: int = 120
 ) -> subprocess.CompletedProcess[bytes]:
-    env = {k: v for k, v in os.environ.items() if k != "VIRTUAL_ENV"}
+    # Git hooks export repository selectors that override a subprocess's cwd.
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if key != "VIRTUAL_ENV" and key not in GIT_LOCAL_ENV_VARS
+    }
     result = subprocess.run(cmd, cwd=cwd, timeout=timeout, capture_output=True, env=env)
     if result.returncode:
         raise RuntimeError(

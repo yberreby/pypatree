@@ -1,4 +1,3 @@
-import subprocess
 import sys
 from pathlib import Path
 
@@ -39,6 +38,15 @@ def test_showcase_uses_requested_revision_and_project_python(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("UV_PYTHON", str(tmp_path / "missing-interpreter"))
+    caller = tmp_path / "caller"
+    run("git", "init", "-q", str(caller))
+    run("git", "-C", str(caller), "config", "user.name", "caller fixture")
+    run("git", "-C", str(caller), "config", "user.email", "caller@example.invalid")
+    run("git", "-C", str(caller), "commit", "--allow-empty", "-qm", "caller")
+    caller_revision = run("git", "-C", str(caller), "rev-parse", "HEAD").stdout
+    monkeypatch.setenv("GIT_DIR", str(caller / ".git"))
+    monkeypatch.setenv("GIT_WORK_TREE", str(caller))
+    monkeypatch.setenv("GIT_INDEX_FILE", str(caller / ".git/index"))
     source = tmp_path / "example"
     package = source / "example"
     package.mkdir(parents=True)
@@ -50,32 +58,25 @@ def test_showcase_uses_requested_revision_and_project_python(
         "import platform\n__doc__ = 'Python ' + platform.python_version()\n"
         "def first_marker() -> None:\n    pass\n"
     )
-    subprocess.run(["git", "init", "-q", str(source)], check=True)
-    subprocess.run(
-        ["git", "-C", str(source), "config", "user.name", "pypatree test"],
-        check=True,
+    run("git", "init", "-q", str(source))
+    run("git", "-C", str(source), "config", "user.name", "pypatree test")
+    run("git", "-C", str(source), "config", "user.email", "test@example.invalid")
+    run("git", "-C", str(source), "add", "pyproject.toml", "example/__init__.py")
+    run("git", "-C", str(source), "commit", "-qm", "first")
+    revision = (
+        run("git", "-C", str(source), "rev-parse", "HEAD").stdout.decode().strip()
     )
-    subprocess.run(
-        ["git", "-C", str(source), "config", "user.email", "test@example.invalid"],
-        check=True,
-    )
-    subprocess.run(
-        ["git", "-C", str(source), "add", "pyproject.toml", "example/__init__.py"],
-        check=True,
-    )
-    subprocess.run(["git", "-C", str(source), "commit", "-qm", "first"], check=True)
-    revision = subprocess.run(
-        ["git", "-C", str(source), "rev-parse", "HEAD"],
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout.strip()
     (package / "__init__.py").write_text("def second_marker() -> None:\n    pass\n")
-    subprocess.run(["git", "-C", str(source), "add", "example/__init__.py"], check=True)
-    subprocess.run(["git", "-C", str(source), "commit", "-qm", "second"], check=True)
+    run("git", "-C", str(source), "add", "example/__init__.py")
+    run("git", "-C", str(source), "commit", "-qm", "second")
 
     output = run_pypatree_on_repo(str(source), revision=revision)
 
     assert "first_marker" in output
     assert "second_marker" not in output
     assert f"Python {PYTHON_VERSION}" in output
+    assert run("git", "-C", str(caller), "rev-parse", "HEAD").stdout == caller_revision
+    assert (
+        run("git", "-C", str(caller), "config", "user.name").stdout.strip()
+        == b"caller fixture"
+    )
