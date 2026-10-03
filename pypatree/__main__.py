@@ -10,6 +10,8 @@ from rich.console import Console
 from .config import Config
 from .discovery import get_packages
 from .display import print_tree
+from .introspection import ErrorHandler
+from .source import source_trees
 from .tree import build_tree
 
 
@@ -21,14 +23,7 @@ def _setup_logging(verbose: bool) -> None:
     )
 
 
-def run(cfg: Config) -> bool:
-    """Display module tree with public functions/classes."""
-    errors: list[str] = []
-
-    def report_error(message: str) -> None:
-        errors.append(message)
-        print(f"pypatree: {message}", file=sys.stderr)
-
+def _print_runtime(cfg: Config, report_error: ErrorHandler) -> None:
     packages = get_packages(cfg.exclude, scope=cfg.scope, on_error=report_error)
     if not packages:
         raise ValueError(
@@ -47,9 +42,32 @@ def run(cfg: Config) -> bool:
             on_error=report_error,
         )
         print_tree(pkg_name, tree, cfg)
+
+
+def run(cfg: Config) -> bool:
+    """Display module tree with public functions/classes."""
+    errors: list[str] = []
+
+    def report_error(message: str) -> None:
+        errors.append(message)
+        print(f"pypatree: {message}", file=sys.stderr)
+
+    if cfg.runtime:
+        _print_runtime(cfg, report_error)
+    else:
+        trees = source_trees(
+            root=Path.cwd(),
+            scope=cfg.scope,
+            exclude=cfg.exclude,
+            show_defaults=cfg.show_defaults,
+            max_width=None if cfg.flat else Console().width,
+            on_error=report_error,
+        )
+        for name, tree in trees.items():
+            print_tree(name, tree, cfg)
     if errors:
         print(
-            "Output is incomplete. Install missing dependencies or fix the reported errors; "
+            "Output is incomplete. Fix the reported errors; "
             "narrow inspection with a module scope or --exclude REGEX.",
             file=sys.stderr,
         )

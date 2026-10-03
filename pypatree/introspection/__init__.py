@@ -162,6 +162,18 @@ def format_signature(
         log.warning("Could not inspect signature for %s: %s", name, error)
         return f"{name}(...)"
 
+    return format_inspected_signature(
+        sig, name=name, show_defaults=show_defaults, max_width=max_width
+    )
+
+
+def format_inspected_signature(
+    sig: inspect.Signature,
+    *,
+    name: str,
+    show_defaults: bool,
+    max_width: Optional[int],
+) -> str:
     ret = sig.return_annotation
     ret_str = "" if ret is inspect.Signature.empty else f" -> {_format_annotation(ret)}"
 

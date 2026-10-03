@@ -8,14 +8,16 @@
 Pretty-print a project's module tree with syntax-highlighted signatures.
 
 ```bash
-uv add --dev pypatree
-uv run pypatree
+uvx pypatree@latest
+uvx pypatree@latest --flat
 ```
 
-Pass a dotted package or module name, such as `uv run pypatree mypkg.parsers`, to
-inspect that namespace without importing unrelated submodules. Python still runs
-the requested module's parent package initializers. Unknown and excluded scopes
-raise an error.
+Run from a Python project or a repository containing Python subprojects.
+Pypatree reads local source with [Griffe](https://mkdocstrings.github.io/griffe/).
+The project and its dependencies do not need to be installed, and its code is
+not executed. Pass a dotted package or module name, such as
+`uvx pypatree@latest mypkg.parsers`, to inspect one subtree. Unknown and excluded
+scopes raise an error.
 
 Use `uv run pypatree --flat` for fully qualified names, one module or callable
 per line. Flat output has no terminal wrapping and works with `rg` and other
@@ -23,19 +25,27 @@ line-oriented tools. Both formats support `--color auto|always|never`; auto colo
 terminal output and emits plain text when piped. Add `--docstrings none` to omit
 module prose.
 
-Pypatree imports project code. Use it on trusted projects in their own Python
-environment. Imports can have side effects or require optional dependencies.
-An import failure produces a diagnostic on stderr; the command retains any
-available output and exits nonzero. A callable whose signature is unavailable
-appears as `name(...)` with a warning. `--verbose` adds discovery details and
-tracebacks for command failures.
+Source inspection shows declared functions, classes, and dataclass constructors.
+Defaults remain source expressions; decorators and metaclasses can change the
+runtime API. Classes without a local or synthesized constructor appear as `name(...)`.
+Parsing requires a Python version that supports the project's syntax; select it
+with `uvx --python 3.14 pypatree@latest` when needed. A parse failure produces a
+diagnostic on stderr, preserves available output, and exits nonzero.
 
-Discovery uses local editable-install metadata. Run from the Python package's
-project directory, including the relevant subproject in a monorepo. Install it
-with `uv pip install -e .` if needed. Conventional package, `src`, namespace-only,
-and single-module layouts are supported. Where the installer supplies no package
-names, discovery prefers regular packages, then namespaces, then module files;
-this keeps adjacent build scripts out of package trees.
+Discovery supports conventional package, `src`, namespace-only, and single-module
+layouts. From a repository root, it searches for subprojects with `pyproject.toml`,
+`setup.py`, or `setup.cfg`, stopping at each project boundary and skipping hidden,
+build, test, and output directories. Within each project, discovery prefers
+regular packages, then namespaces, then module files. Duplicate package names
+require running from the intended subproject.
+
+Use `uv run pypatree --runtime` for APIs created dynamically. Install pypatree and
+the inspected project into the same environment (`uv add --dev pypatree` and
+`uv pip install -e .`). Runtime discovery uses editable-install metadata and
+imports trusted project code, including parent package initializers. Imports can
+have side effects or require optional dependencies. Import failures retain
+available output and exit nonzero; unavailable signatures appear as `name(...)`
+with a warning. `--verbose` adds discovery details and tracebacks.
 
 Output lists public functions and classes defined in each module. Class methods,
 constants, and imported re-exports are outside this view.
@@ -60,7 +70,7 @@ Source: commit `{{SHOWCASE_REVISION}}`, Python {{SHOWCASE_PYTHON}}.
 {{SHOWCASE_OUTPUT}}
 ```
 
-Python API: `build_tree()` returns a `Tree` dataclass with `items`, `children`,
+Python API: `build_tree()` performs runtime inspection and returns a `Tree` dataclass with `items`, `children`,
 `docstring`, and `failed` fields. In 0.5, this replaces the dictionary containing
 the reserved `__items__` key. Read `tree.items` and `tree.children[name]` when
 updating callers from 0.4.

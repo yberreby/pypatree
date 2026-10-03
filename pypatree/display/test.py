@@ -89,9 +89,9 @@ def test_full_docstrings_and_failed_imports(
     print_tree("pkg", tree, Config(flat=flat, docstrings=DocstringMode.full))
     output = capsys.readouterr().out
     assert "First line." in output and "Second line." in output
-    assert "broken [import failed]" in output
+    assert "broken [inspection failed]" in output
     if flat:
         assert output.splitlines() == [
             r"pkg  First line.\nSecond line.",
-            "pkg.broken [import failed]",
+            "pkg.broken [inspection failed]",
         ]
