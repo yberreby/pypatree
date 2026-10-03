@@ -42,9 +42,16 @@ def test_scope_to_submodule(capsys) -> None:  # type: ignore[no-untyped-def]
     assert "print_tree" not in out  # from display module
 
 
-def test_scope_nonexistent_reports_error() -> None:
-    with pytest.raises(ValueError, match="not in a local editable package"):
-        run(Config(scope="nonexistent.module", docstrings=DocstringMode.none))
+@pytest.mark.parametrize("runtime", [False, True])
+def test_scope_nonexistent_reports_error(runtime: bool) -> None:
+    with pytest.raises(ValueError, match="not in a local"):
+        run(
+            Config(
+                scope="nonexistent.module",
+                docstrings=DocstringMode.none,
+                runtime=runtime,
+            )
+        )
 
 
 @pytest.mark.parametrize(
@@ -60,7 +67,11 @@ def test_scoped_cli_avoids_unrelated_imports(
     stub = Path(__file__).parent / "stubs" / "test_stub"
     cli = Path(sys.executable).with_name("pypatree")
     result = subprocess.run(
-        [str(cli), scope], cwd=stub, text=True, capture_output=True, timeout=10
+        [str(cli), scope, "--runtime"],
+        cwd=stub,
+        text=True,
+        capture_output=True,
+        timeout=10,
     )
     assert result.stdout.startswith(scope)
     assert expected in result.stdout
@@ -81,7 +92,7 @@ def test_scoped_cli_respects_package_boundaries_and_exclusions() -> None:
         ("test_stub.branch.test_ignored", "excluded by --exclude"),
     ]:
         result = subprocess.run(
-            [str(cli), scope], cwd=stub, text=True, capture_output=True
+            [str(cli), scope, "--runtime"], cwd=stub, text=True, capture_output=True
         )
         assert result.returncode != 0
         assert message in result.stderr

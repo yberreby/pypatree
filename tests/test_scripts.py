@@ -70,7 +70,7 @@ def test_showcase_uses_requested_revision_and_project_python(
     run("git", "-C", str(source), "add", "example/__init__.py")
     run("git", "-C", str(source), "commit", "-qm", "second")
 
-    output = run_pypatree_on_repo(str(source), revision=revision)
+    output = run_pypatree_on_repo(str(source), revision=revision, runtime=True)
 
     assert "first_marker" in output
     assert "second_marker" not in output
