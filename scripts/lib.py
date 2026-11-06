@@ -1,16 +1,15 @@
-"""Shared utilities for scripts."""
+"""Shared helpers for development scripts and their tests."""
 
 import os
 import subprocess
 import sys
 import tempfile
-from pathlib import Path
 from collections.abc import Iterator
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Optional, Union
 
 ROOT = Path(__file__).parent.parent
-PYPATREE = f"pypatree@{ROOT}"
 PYTHON_VERSION = (ROOT / ".python-version").read_text().strip()
 GIT_LOCAL_ENV_VARS = frozenset(
     subprocess.run(
@@ -25,6 +24,7 @@ GIT_LOCAL_ENV_VARS = frozenset(
 def run(
     *cmd: str, cwd: Optional[Union[str, Path]] = None, timeout: int = 120
 ) -> subprocess.CompletedProcess[bytes]:
+    """Run cmd, raising with its output on failure and forwarding its stderr."""
     # Git hooks export repository selectors that override a subprocess's cwd.
     env = {
         key: value
@@ -43,50 +43,35 @@ def run(
     return result
 
 
-@contextmanager
-def checkout_repo(repo_url: str, revision: Optional[str] = None) -> Iterator[Path]:
-    with tempfile.TemporaryDirectory() as tmp:
-        name = repo_url.split("/")[-1].removesuffix(".git")
-        dest = str(Path(tmp) / name)
+def pypatree(*args: str, cwd: Path) -> str:
+    """Run this checkout's pypatree with locked dependencies and the project Python.
 
+    The isolated environment leaves the development environment untouched.
+    """
+    environment = ["--isolated", "--locked", "--no-dev", "--project", str(ROOT)]
+    command = ["uv", "run", *environment, "--python", PYTHON_VERSION, "pypatree"]
+    return run(*command, *args, cwd=cwd).stdout.decode()
+
+
+@contextmanager
+def checkout(repo_url: str, revision: Optional[str] = None) -> Iterator[Path]:
+    """Clone repo_url at revision, or at its default branch head, into a temporary directory."""
+    with tempfile.TemporaryDirectory() as tmp:
+        dest = str(Path(tmp) / repo_url.split("/")[-1].removesuffix(".git"))
         if revision is None:
             run("git", "clone", "--depth=1", "-q", repo_url, dest)
         else:
             run("git", "init", "-q", dest)
             run("git", "-C", dest, "fetch", "--depth=1", "-q", repo_url, revision)
             run("git", "-C", dest, "checkout", "--detach", "-q", "FETCH_HEAD")
-            actual_revision = (
-                run("git", "-C", dest, "rev-parse", "HEAD").stdout.decode().strip()
-            )
-            assert actual_revision == revision, (actual_revision, revision)
-
+            actual = run("git", "-C", dest, "rev-parse", "HEAD").stdout.decode().strip()
+            assert actual == revision, (actual, revision)
         yield Path(dest)
 
 
-def run_pypatree_on_repo(
-    repo_url: str,
-    revision: Optional[str] = None,
-    constraints: Optional[Path] = None,
-    extras: tuple[str, ...] = (),
-    scope: Optional[str] = None,
-    runtime: bool = False,
-) -> str:
-    with checkout_repo(repo_url, revision=revision) as dest:
-        run("uv", "venv", "--python", PYTHON_VERSION, cwd=dest)
-        executable = str(dest / ".venv" / "bin" / "python")
-        install = ["uv", "pip", "install", "--python", executable]
-        if constraints is not None:
-            install.extend(["--constraints", str(constraints)])
-        package = f".[{','.join(extras)}]" if extras else "."
-        if runtime:
-            install.extend(["-e", package])
-        run(*install, PYPATREE, cwd=dest)
-        command = ["uv", "run", "--python", executable, "--no-sync", "pypatree"]
-        if runtime:
-            command.append("--runtime")
-        if scope is not None:
-            command.append(scope)
-        output = run(*command, cwd=dest).stdout.decode()
-        if not output.strip():
-            raise RuntimeError(f"pypatree produced no tree for {repo_url}")
-        return output
+def pypatree_on_repo(repo_url: str, *args: str, revision: Optional[str] = None) -> str:
+    with checkout(repo_url, revision) as source:
+        output = pypatree(*args, cwd=source)
+    if not output.strip():
+        raise RuntimeError(f"pypatree produced no tree for {repo_url}")
+    return output

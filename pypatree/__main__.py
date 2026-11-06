@@ -5,66 +5,27 @@ import traceback
 from pathlib import Path
 
 import tyro
-from rich.console import Console
 
-from .config import Config
-from .discovery import get_packages
+from .config import Config, Exclusion
 from .display import print_tree
-from .introspection import ErrorHandler
+from .runtime import runtime_trees
 from .source import source_trees
-from .tree import build_tree
-
-
-def _setup_logging(verbose: bool) -> None:
-    logging.basicConfig(
-        level=logging.DEBUG if verbose else logging.WARNING,
-        format="%(name)s: %(message)s",
-        stream=sys.stderr,
-    )
-
-
-def _print_runtime(cfg: Config, report_error: ErrorHandler) -> None:
-    packages = get_packages(cfg.exclude, scope=cfg.scope, on_error=report_error)
-    if not packages:
-        raise ValueError(
-            f"No local editable packages found in {Path.cwd()}. "
-            "Run `uv pip install -e .` from the Python package's project directory, "
-            "then rerun pypatree there. Use --verbose for discovery details."
-        )
-
-    for pkg_name, submods in sorted(packages.items()):
-        tree = build_tree(
-            submods,
-            pkg_name=pkg_name,
-            exclude=cfg.exclude,
-            show_defaults=cfg.show_defaults,
-            max_width=None if cfg.flat else Console().width,
-            on_error=report_error,
-        )
-        print_tree(pkg_name, tree, cfg)
 
 
 def run(cfg: Config) -> bool:
-    """Display module tree with public functions/classes."""
-    errors: list[str] = []
-
-    def report_error(message: str) -> None:
-        errors.append(message)
-        print(f"pypatree: {message}", file=sys.stderr)
-
-    if cfg.runtime:
-        _print_runtime(cfg, report_error)
-    else:
-        trees = source_trees(
-            root=Path.cwd(),
-            scope=cfg.scope,
-            exclude=cfg.exclude,
-            show_defaults=cfg.show_defaults,
-            max_width=None if cfg.flat else Console().width,
-            on_error=report_error,
-        )
-        for name, tree in trees.items():
-            print_tree(name, tree, cfg)
+    """Print the selected module trees; return whether inspection was complete."""
+    inspect_trees = runtime_trees if cfg.runtime else source_trees
+    trees = inspect_trees(
+        Path.cwd(),
+        scope=cfg.scope,
+        exclude=Exclusion(cfg.exclude),
+        show_defaults=cfg.show_defaults,
+    )
+    for name, tree in trees.items():
+        print_tree(name, tree, cfg)
+    errors = [entry for name, tree in trees.items() for entry in tree.errors(name)]
+    for module, error in errors:
+        print(f"pypatree: could not inspect {module}: {error}", file=sys.stderr)
     if errors:
         print(
             "Output is incomplete. Fix the reported errors; "
@@ -78,7 +39,14 @@ def main() -> int:
     cfg = tyro.cli(
         Config, description="Display module tree with public functions/classes."
     )
-    _setup_logging(cfg.verbose)
+    logging.basicConfig(
+        level=logging.DEBUG if cfg.verbose else logging.WARNING,
+        format="%(name)s: %(message)s",
+        stream=sys.stderr,
+    )
+    if not cfg.verbose:
+        # Griffe logs a traceback for each unreadable module, which run() reports.
+        logging.getLogger("griffe").setLevel(logging.CRITICAL)
     try:
         return 0 if run(cfg) else 1
     except re.error as error:

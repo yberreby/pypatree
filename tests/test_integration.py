@@ -1,4 +1,4 @@
-"""Integration tests for pypatree."""
+"""Run pypatree on itself and on the editable-installed stub projects."""
 
 import subprocess
 import sys
@@ -7,51 +7,39 @@ from pathlib import Path
 import pytest
 
 from pypatree.__main__ import run
-from pypatree.config import DEFAULT_EXCLUDE, Config, DocstringMode
-from pypatree.discovery import get_packages
+from pypatree.config import Config
 
-
-def test_finds_pypatree_package(capsys) -> None:  # type: ignore[no-untyped-def]
-    """pypatree finds itself when run from its own directory."""
-    run(Config(exclude=DEFAULT_EXCLUDE, docstrings=DocstringMode.none))
-    out = capsys.readouterr().out
-    assert "pypatree" in out
-    assert "get_packages" in out
-
-
-def test_excludes_test_modules_by_default(capsys) -> None:  # type: ignore[no-untyped-def]
-    """Test modules are excluded with default exclude pattern."""
-    run(Config(exclude=DEFAULT_EXCLUDE, docstrings=DocstringMode.none))
-    out = capsys.readouterr().out
-    assert "test_format_signature" not in out
-
-
-def test_includes_test_modules_when_no_exclude(capsys) -> None:  # type: ignore[no-untyped-def]
-    """Test modules are included when exclude is None."""
-    run(Config(exclude=None, docstrings=DocstringMode.none))
-    out = capsys.readouterr().out
-    assert "test_format_signature" in out
-
-
-def test_scope_to_submodule(capsys) -> None:  # type: ignore[no-untyped-def]
-    """Scoping to a submodule shows only that subtree."""
-    run(Config(scope="pypatree.discovery", docstrings=DocstringMode.none))
-    out = capsys.readouterr().out
-    assert "pypatree.discovery" in out
-    assert "get_packages" in out
-    assert "print_tree" not in out  # from display module
+STUB = Path(__file__).parent / "stubs" / "test_stub"
+CLI = Path(sys.executable).with_name("pypatree")
 
 
 @pytest.mark.parametrize("runtime", [False, True])
-def test_scope_nonexistent_reports_error(runtime: bool) -> None:
-    with pytest.raises(ValueError, match="not in a local"):
-        run(
-            Config(
-                scope="nonexistent.module",
-                docstrings=DocstringMode.none,
-                runtime=runtime,
-            )
-        )
+def test_inspects_itself_without_test_modules(
+    runtime: bool, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert run(Config(docstrings="none", runtime=runtime))
+    out = capsys.readouterr().out
+    assert "source_trees(" in out
+    assert "test_scope_errors" not in out
+    assert run(Config(docstrings="none", exclude="", runtime=runtime))
+    assert "test_scope_errors" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("runtime", [False, True])
+def test_scope_shows_only_that_subtree(
+    runtime: bool, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert run(Config(scope="pypatree.layout", docstrings="none", runtime=runtime))
+    out = capsys.readouterr().out
+    assert out.startswith("pypatree.layout")
+    assert "project_packages" in out
+    assert "print_tree" not in out
+
+
+@pytest.mark.parametrize("runtime", [False, True])
+def test_unknown_scope_lists_local_packages(runtime: bool) -> None:
+    with pytest.raises(ValueError, match="not in a local package. Found: pypatree"):
+        run(Config(scope="nonexistent.module", runtime=runtime))
 
 
 @pytest.mark.parametrize(
@@ -64,11 +52,9 @@ def test_scope_nonexistent_reports_error(runtime: bool) -> None:
 def test_scoped_cli_avoids_unrelated_imports(
     scope: str, expected: str, exit_code: int
 ) -> None:
-    stub = Path(__file__).parent / "stubs" / "test_stub"
-    cli = Path(sys.executable).with_name("pypatree")
     result = subprocess.run(
-        [str(cli), scope, "--runtime"],
-        cwd=stub,
+        [str(CLI), scope, "--runtime"],
+        cwd=STUB,
         text=True,
         capture_output=True,
         timeout=10,
@@ -84,41 +70,17 @@ def test_scoped_cli_avoids_unrelated_imports(
 
 
 def test_scoped_cli_respects_package_boundaries_and_exclusions() -> None:
-    stub = Path(__file__).parent / "stubs" / "test_stub"
-    cli = Path(sys.executable).with_name("pypatree")
     for scope, message in [
-        ("test_stubbish.branch", "not in a local editable package"),
+        ("test_stubbish.branch", "not in a local package"),
         ("test_stub.branch.missing", "does not exist"),
         ("test_stub.branch.test_ignored", "excluded by --exclude"),
     ]:
         result = subprocess.run(
-            [str(cli), scope, "--runtime"], cwd=stub, text=True, capture_output=True
+            [str(CLI), scope, "--runtime"],
+            cwd=STUB,
+            text=True,
+            capture_output=True,
+            timeout=10,
         )
         assert result.returncode != 0
         assert message in result.stderr
-
-
-def test_scoped_discovery_is_relative_to_local_root(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    stub = Path(__file__).parent / "stubs" / "test_stub"
-    monkeypatch.chdir(stub)
-
-    assert get_packages(exclude=DEFAULT_EXCLUDE, scope="test_stub.branch") == {
-        "test_stub.branch": [
-            "test_stub.branch",
-            "test_stub.branch.deep",
-            "test_stub.branch.deep.inner",
-            "test_stub.branch.leaf",
-            "test_stub.branch.needs_missing",
-        ]
-    }
-    assert get_packages(exclude=DEFAULT_EXCLUDE, scope="test_stub.branch.leaf") == {
-        "test_stub.branch.leaf": ["test_stub.branch.leaf"]
-    }
-    with pytest.raises(ValueError, match="excluded by --exclude"):
-        get_packages(exclude=DEFAULT_EXCLUDE, scope="test_stub.branch.test_ignored")
-    with pytest.raises(ValueError, match="does not exist"):
-        get_packages(exclude=DEFAULT_EXCLUDE, scope="test_stub.branch.missing")
-    with pytest.raises(ModuleNotFoundError, match="missing_dependency_for_pypatree"):
-        get_packages(exclude=DEFAULT_EXCLUDE, scope="test_stub.branch.needs_missing")

@@ -1,6 +1,6 @@
 [project]
 name = "pypatree"
-version = "0.6.0"
+version = "0.7.0"
 license = "MIT"
 authors = [
   {name = "Yohaï-Eliel Berreby", email = "me@yberreby.com"},
@@ -27,6 +27,7 @@ classifiers = [
 dependencies = [
     "griffe>=1.14,<3",
     "rich>=14.2.0",
+    "tomli>=1.1.0 ; python_full_version < '3.11'",
     "tyro>=0.9.35",
 ]
 
@@ -46,7 +47,8 @@ packages = ["pypatree"]
 exclude = ["**/test.py"]
 
 [tool.hatch.build.targets.sdist]
-exclude = [".git"]
+# Tests and scripts read .python-version and run against uv.lock.
+only-include = [".python-version", "pypatree", "scripts", "tests", "uv.lock"]
 
 [dependency-groups]
 dev = [
@@ -58,7 +60,6 @@ dev = [
     "rust-just>=1.43.1",
     "test_stub",
     "brokenpkg",
-    "mypy>=1.19.0",
 ]
 
 [tool.uv.sources]
@@ -68,13 +69,9 @@ brokenpkg = {path = "tests/stubs/brokenpkg", editable = true}
 [tool.pytest.ini_options]
 testpaths = ["pypatree", "tests"]
 python_files = ["test.py", "test_*.py"]
-python_functions = ["test_*"]
 
 [tool.coverage.run]
 omit = ["pypatree/__main__.py", "*/test.py"]
-
-[tool.coverage.report]
-exclude_lines = ["if __name__"]
 
 [tool.ruff]
 exclude = ["tests/stubs"]
@@ -82,10 +79,3 @@ exclude = ["tests/stubs"]
 [tool.basedpyright]
 typeCheckingMode = "standard"
 exclude = [".venv", "tests/stubs", "outputs", "dist"]
-reportAny = false
-reportExplicitAny = false
-reportUnknownMemberType = false
-reportUnknownArgumentType = false
-
-[tool.mypy]
-exclude = ["tests/stubs"]

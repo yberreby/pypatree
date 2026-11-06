@@ -13,6 +13,10 @@ See @.pre-commit-config.yaml
 See @pypatree directory for core code
 
 Architecture: `uv run pypatree` (dogfood). Each module = dir with `__init__.py` + `test.py`.
+The `source` (Griffe) and `runtime` (import) backends both return `Tree`s of
+`Signature`s; inspection failures are data (`Tree.error`); `display` owns layout.
+`layout.project_packages` selects the modules a project's build would ship,
+preferring `build_config` declarations; its tests cover each backend's format.
 
 We have GitHub Actions, see @.github/workflows
 

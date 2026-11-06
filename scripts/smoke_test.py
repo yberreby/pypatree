@@ -1,48 +1,20 @@
 #!/usr/bin/env python
-"""Smoke test pypatree against real-world projects."""
+"""Run pypatree against the current heads of real-world projects."""
 
-import sys
-from dataclasses import dataclass
+from lib import pypatree_on_repo
 
-from lib import run_pypatree_on_repo
-
-
-@dataclass(frozen=True)
-class Repo:
-    url: str
-    scope: str
-    extras: tuple[str, ...] = ()
+SCOPES = {
+    "https://github.com/encode/httpx.git": "httpx",
+    "https://github.com/Textualize/rich.git": "rich.console",
+    "https://github.com/brentyi/tyro.git": "tyro",
+}
 
 
-REPOS = [
-    Repo("https://github.com/encode/httpx.git", scope="httpx", extras=("cli",)),
-    Repo("https://github.com/Textualize/rich.git", scope="rich.console"),
-    Repo("https://github.com/brentyi/tyro.git", scope="tyro"),
-]
-
-
-def main() -> int:
-    quiet = "-q" in sys.argv or "--quiet" in sys.argv
-
-    for repo in REPOS:
-        name = repo.url.split("/")[-1].removesuffix(".git")
-        print(f"=== {name}: {repo.scope} ===", flush=True)
-
-        try:
-            output = run_pypatree_on_repo(
-                repo.url, extras=repo.extras, scope=repo.scope
-            )
-        except RuntimeError as e:
-            print(f"FAIL: {e}")
-            return 1
-
-        if quiet:
-            print(f"ok ({output.count(chr(10))} lines)\n")
-        else:
-            print(output)
-
-    return 0
+def main() -> None:
+    for url, scope in SCOPES.items():
+        print(f"=== {scope} ({url})", flush=True)
+        print(pypatree_on_repo(url, scope), flush=True)
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()
