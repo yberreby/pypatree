@@ -75,6 +75,67 @@ def test_project_layouts(
     }
 
 
+@pytest.mark.parametrize(
+    ("files", "expected"),
+    [
+        # A single-module project beside its documentation and release scripts.
+        (
+            {"mytool.py": "", "docs/conf.py": "", "scripts/release.py": ""},
+            {"mytool": "mytool.py"},
+        ),
+        # Only names that setuptools would pass over: inspect them anyway.
+        ({"example/__init__.py": ""}, {"example": "example"}),
+        # The project's name selects its module over unrelated directories.
+        (
+            {
+                "pyproject.toml": '[project]\nname = "My-Tool"\n',
+                "my_tool.py": "",
+                "assets/generate.py": "",
+            },
+            {"my_tool": "my_tool.py"},
+        ),
+        # Declarations take precedence, even for test-like names.
+        (
+            {
+                "pyproject.toml": "[tool.hatch.build.targets.wheel]\n"
+                'packages = ["lib/core", "test_support"]\n',
+                "lib/core/__init__.py": "",
+                "other/__init__.py": "",
+                "test_support/__init__.py": "",
+            },
+            {"core": "lib/core", "test_support": "test_support"},
+        ),
+        # A declared source directory replaces src.
+        (
+            {
+                "pyproject.toml": '[tool.maturin]\npython-source = "python"\n',
+                "python/native/__init__.py": "",
+                "src/lib.rs": "",
+                "docs/conf.py": "",
+            },
+            {"native": "python/native"},
+        ),
+        # A declared module that does not exist leaves the conventions in charge.
+        (
+            {
+                "pyproject.toml": '[tool.flit.module]\nname = "missing"\n',
+                "present/__init__.py": "",
+            },
+            {"present": "present"},
+        ),
+    ],
+)
+def test_build_configuration_selects_shipped_modules(
+    tmp_path: Path, files: dict[str, str], expected: dict[str, str]
+) -> None:
+    for name, text in files.items():
+        (tmp_path / name).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / name).write_text(text)
+    assert project_packages(tmp_path) == {
+        name: tmp_path / path for name, path in expected.items()
+    }
+
+
 def test_package_in_root_and_src_is_ambiguous(tmp_path: Path) -> None:
     touch(tmp_path, "example/__init__.py", "src/example/__init__.py")
     with pytest.raises(ValueError, match="Ambiguous source package 'example'"):

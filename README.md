@@ -36,9 +36,12 @@ Discovery supports conventional package, `src`, namespace-only, and single-modul
 layouts. From a repository root, it searches for subprojects with `pyproject.toml`,
 `setup.py`, or `setup.cfg`, stopping at each project boundary. The search skips
 hidden, Git-ignored, and test directories, `node_modules`, and virtual
-environments. Within each project, discovery ignores tests and prefers regular
-packages, then namespaces, then module files. Duplicate package names require
-running from the intended subproject.
+environments. Within each project, discovery selects the modules its build would
+ship: those declared in hatch, setuptools, flit, uv, poetry, pdm, or maturin
+configuration; else the contents of `src` or a declared source directory; else
+the module named after the project; else, as setuptools does, its packages, then
+namespaces, then module files, passing over names such as `docs` and `examples`.
+Duplicate package names require running from the intended subproject.
 
 Use `uv run pypatree --runtime` for APIs created dynamically. Install pypatree and
 the inspected project into the same environment (`uv add --dev pypatree` and
@@ -58,6 +61,15 @@ pypatree  pypatree - Pretty-print a project's module tree.
 ├── __main__
 │   ├── main() -> int
 │   └── run(cfg: Config) -> bool
+├── build_config  Read what a project's build configuration declares about its
+│   top-level modules.
+│   ├── BuildConfig(
+│   │       name: Optional[str] = ...,
+│   │       include: tuple[str, ...] = ...,
+│   │       roots: tuple[PurePosixPath, ...] = ...,
+│   │   )
+│   ├── normalize(name: str) -> str
+│   └── read_build_config(project: Path) -> BuildConfig
 ├── config  Command-line options and the module selection they describe.
 │   ├── Config(
 │   │       scope: Optional[str] = ...,

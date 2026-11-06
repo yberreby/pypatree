@@ -604,6 +604,7 @@ dependencies = [
     { name = "griffe", version = "1.14.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "griffe", version = "2.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "rich" },
+    { name = "tomli", marker = "python_full_version < '3.11'" },
     { name = "tyro" },
 ]
 
@@ -625,6 +626,7 @@ dev = [
 requires-dist = [
     { name = "griffe", specifier = ">=1.14,<3" },
     { name = "rich", specifier = ">=14.2.0" },
+    { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=1.1.0" },
     { name = "tyro", specifier = ">=0.9.35" },
 ]
 

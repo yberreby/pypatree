@@ -2,7 +2,10 @@
 
 import inspect
 import re
+from fnmatch import fnmatchcase
 from pathlib import Path
+
+from pypatree.build_config import normalize, read_build_config
 
 TEST_NAME = re.compile(r"^tests?$|^test_")
 """Names of test modules and directories."""
@@ -44,38 +47,65 @@ def is_package(directory: Path) -> bool:
 
 
 def project_packages(project: Path) -> dict[str, Path]:
-    """Map a project's public top-level modules to their paths.
+    """Map the public top-level modules that a project's build ships to their paths.
 
-    Searches the project root and a `src` directory that is not itself a package,
-    ignoring tests and virtual environments. Prefers regular packages, then
-    namespace packages, then single modules, so build scripts beside a package
-    are not mistaken for the project's API.
+    In order of preference: the modules its build configuration declares; the
+    contents of its source directory, `src` or a declared one; the module named
+    after the project; and, as in setuptools' flat layout, the packages, else
+    namespace packages, else modules, passing over names such as `docs`.
+    Tests and virtual environments are never part of the result.
     """
+    config = read_build_config(project)
     src = project / "src"
-    directories = [project]
-    if src.is_dir() and not is_package(src):
-        directories.append(src)
+    sources = [project / root for root in config.roots]
+    if not sources and src.is_dir() and not is_package(src):
+        sources = [src]
     found: dict[str, Path] = {}
-    for directory in directories:
+    for directory in [project, *sources]:
         for name, path in modules(directory).items():
             if (
                 name.startswith("_")
-                or TEST_NAME.search(name)
-                or path in directories
+                or path in sources
                 or (path / "pyvenv.cfg").is_file()
             ):
                 continue
-            if name in found:
+            if name in found and found[name] != path:
                 raise ValueError(
                     f"Ambiguous source package {name!r}: {found[name]} and {path}"
                 )
             found[name] = path
-    rank = {name: _rank(path) for name, path in found.items()}
+    declared = {
+        name: path
+        for name, path in found.items()
+        if any(fnmatchcase(name, pattern) for pattern in config.include)
+    }
+    public = {name: path for name, path in found.items() if not TEST_NAME.search(name)}
+    in_sources = {name: path for name, path in public.items() if path.parent in sources}
+    named = {
+        name: path for name, path in public.items() if normalize(name) == config.name
+    }
+    for chosen in [declared, in_sources, named]:
+        if chosen:
+            return dict(sorted(chosen.items()))
+    rank = {name: _rank(name, path) for name, path in public.items()}
     best = min(rank.values(), default=None)
-    return {name: path for name, path in sorted(found.items()) if rank[name] == best}
+    return {name: path for name, path in sorted(public.items()) if rank[name] == best}
 
 
-def _rank(path: Path) -> int:
+# Names that setuptools' flat layout does not ship (setuptools.discovery, 84.2).
+_UNSHIPPED_PACKAGES = frozenset(
+    "benchmark benchmarks bin build changelog ci debian dist doc docs documentation "
+    "env example examples exercise exercises fabfile htmlcov manpages news "
+    "newsfragments python requirements scripts site_scons tasks tools util utils "
+    "venv".split()
+)
+_UNSHIPPED_MODULES = frozenset(
+    "benchmark benchmarks build conanfile conftest dodo example examples exercise "
+    "exercises fabfile manage noxfile pavement setup tasks toxfile".split()
+)
+
+
+def _rank(name: str, path: Path) -> tuple[bool, int]:
     if path.is_file():
-        return 2
-    return 0 if is_package(path) else 1
+        return name in _UNSHIPPED_MODULES, 2
+    return name in _UNSHIPPED_PACKAGES, 0 if is_package(path) else 1
