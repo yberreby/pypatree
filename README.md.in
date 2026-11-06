@@ -16,8 +16,8 @@ Run from a Python project or a repository containing Python subprojects.
 Pypatree reads local source with [Griffe](https://mkdocstrings.github.io/griffe/).
 The project and its dependencies do not need to be installed, and its code is
 not executed. Pass a dotted package or module name, such as
-`uvx pypatree@latest mypkg.parsers`, to inspect one subtree. Unknown and excluded
-scopes raise an error.
+`uvx pypatree@latest mypkg.parsers`, to inspect one subtree. Unknown scopes and
+scopes inside excluded modules raise an error.
 
 Use `uv run pypatree --flat` for fully qualified names, one module or callable
 per line. Flat output has no terminal wrapping and works with `rg` and other
@@ -34,18 +34,21 @@ diagnostic on stderr, preserves available output, and exits nonzero.
 
 Discovery supports conventional package, `src`, namespace-only, and single-module
 layouts. From a repository root, it searches for subprojects with `pyproject.toml`,
-`setup.py`, or `setup.cfg`, stopping at each project boundary and skipping hidden,
-build, test, and output directories. Within each project, discovery prefers
-regular packages, then namespaces, then module files. Duplicate package names
-require running from the intended subproject.
+`setup.py`, or `setup.cfg`, stopping at each project boundary. The search skips
+hidden, Git-ignored, and test directories, `node_modules`, and virtual
+environments. Within each project, discovery ignores tests and prefers regular
+packages, then namespaces, then module files. Duplicate package names require
+running from the intended subproject.
 
 Use `uv run pypatree --runtime` for APIs created dynamically. Install pypatree and
 the inspected project into the same environment (`uv add --dev pypatree` and
 `uv pip install -e .`). Runtime discovery uses editable-install metadata and
-imports trusted project code, including parent package initializers. Imports can
-have side effects or require optional dependencies. Import failures retain
-available output and exit nonzero; unavailable signatures appear as `name(...)`
-with a warning. `--verbose` adds discovery details and tracebacks.
+imports trusted project code, including parent package initializers but not
+`__main__` scripts. Imports can have side effects or require optional
+dependencies. Modules that fail to import are marked `[inspection failed]` and
+reported on stderr; the rest of the output is kept and pypatree exits nonzero.
+Unavailable signatures appear as `name(...)` with a warning. `--verbose` adds
+discovery details and tracebacks.
 
 Output lists public functions and classes defined in each module. Class methods,
 constants, and imported re-exports are outside this view.
@@ -70,11 +73,13 @@ Source: commit `{{SHOWCASE_REVISION}}`, Python {{SHOWCASE_PYTHON}}.
 {{SHOWCASE_OUTPUT}}
 ```
 
-Python API: `build_tree()` performs runtime inspection and returns a `Tree` dataclass with `items`, `children`,
-`docstring`, and `failed` fields. In 0.5, this replaces the dictionary containing
-the reserved `__items__` key. Read `tree.items` and `tree.children[name]` when
-updating callers from 0.4.
+Python API: `source_trees(root)` and `runtime_trees(root)` accept the CLI's
+`scope`, `exclude` (an `Exclusion`), and `show_defaults` options and return a
+`Tree` for each inspected package. A `Tree` has `items` (`Signature` objects in
+definition order), `children`, `docstring`, and `error`, which explains why a
+module could not be fully inspected. `str(signature)` is its one-line form.
+These replace `build_tree()`, `get_packages()`, `get_module_items()`, and
+`format_signature()` from 0.6.
 
 Development commands live in `justfile`. Run `uv run just` for local checks and
-README generation. Refresh the pinned showcase dependencies with
-`uv run python scripts/regen_readme.py --update-constraints`.
+README generation. README examples run with the locked dependencies in `uv.lock`.

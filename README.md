@@ -16,8 +16,8 @@ Run from a Python project or a repository containing Python subprojects.
 Pypatree reads local source with [Griffe](https://mkdocstrings.github.io/griffe/).
 The project and its dependencies do not need to be installed, and its code is
 not executed. Pass a dotted package or module name, such as
-`uvx pypatree@latest mypkg.parsers`, to inspect one subtree. Unknown and excluded
-scopes raise an error.
+`uvx pypatree@latest mypkg.parsers`, to inspect one subtree. Unknown scopes and
+scopes inside excluded modules raise an error.
 
 Use `uv run pypatree --flat` for fully qualified names, one module or callable
 per line. Flat output has no terminal wrapping and works with `rg` and other
@@ -34,18 +34,21 @@ diagnostic on stderr, preserves available output, and exits nonzero.
 
 Discovery supports conventional package, `src`, namespace-only, and single-module
 layouts. From a repository root, it searches for subprojects with `pyproject.toml`,
-`setup.py`, or `setup.cfg`, stopping at each project boundary and skipping hidden,
-build, test, and output directories. Within each project, discovery prefers
-regular packages, then namespaces, then module files. Duplicate package names
-require running from the intended subproject.
+`setup.py`, or `setup.cfg`, stopping at each project boundary. The search skips
+hidden, Git-ignored, and test directories, `node_modules`, and virtual
+environments. Within each project, discovery ignores tests and prefers regular
+packages, then namespaces, then module files. Duplicate package names require
+running from the intended subproject.
 
 Use `uv run pypatree --runtime` for APIs created dynamically. Install pypatree and
 the inspected project into the same environment (`uv add --dev pypatree` and
 `uv pip install -e .`). Runtime discovery uses editable-install metadata and
-imports trusted project code, including parent package initializers. Imports can
-have side effects or require optional dependencies. Import failures retain
-available output and exit nonzero; unavailable signatures appear as `name(...)`
-with a warning. `--verbose` adds discovery details and tracebacks.
+imports trusted project code, including parent package initializers but not
+`__main__` scripts. Imports can have side effects or require optional
+dependencies. Modules that fail to import are marked `[inspection failed]` and
+reported on stderr; the rest of the output is kept and pypatree exits nonzero.
+Unavailable signatures appear as `name(...)` with a warning. `--verbose` adds
+discovery details and tracebacks.
 
 Output lists public functions and classes defined in each module. Class methods,
 constants, and imported re-exports are outside this view.
@@ -55,97 +58,87 @@ pypatree  pypatree - Pretty-print a project's module tree.
 ├── __main__
 │   ├── main() -> int
 │   └── run(cfg: Config) -> bool
-├── config  Configuration types for pypatree.
+├── config  Command-line options and the module selection they describe.
 │   ├── Config(
 │   │       scope: Optional[str] = ...,
-│   │       exclude: Optional[str] = ...,
-│   │       docstrings: DocstringMode = ...,
+│   │       exclude: str = ...,
+│   │       docstrings: Literal['none', 'short', 'full'] = ...,
 │   │       show_defaults: bool = ...,
 │   │       flat: bool = ...,
 │   │       color: Literal['auto', 'always', 'never'] = ...,
 │   │       verbose: bool = ...,
 │   │       runtime: bool = ...,
 │   │   )
-│   └── DocstringMode(...)
-├── discovery
-│   └── get_packages(
-│           exclude: Optional[str] = ...,
+│   ├── Exclusion(regex: str = ...)
+│   └── select_modules(
+│           packages: Collection[str],
+│           scope: Optional[str],
+│           exclude: Exclusion,
+│       ) -> list[str]
+├── display  Render module trees as Rich trees or as qualified lines.
+│   └── print_tree(name: str, tree: Tree, cfg: Config) -> None
+├── introspection  Signatures of live functions and classes.
+│   ├── module_items(
+│   │       module: ModuleType,
+│   │       *,
+│   │       exclude: Exclusion,
+│   │       show_defaults: bool,
+│   │   ) -> list[Signature]
+│   └── signature_of(
+│           obj: Union[Callable[..., object], type],
+│           *,
+│           name: Optional[str] = ...,
+│           show_defaults: bool,
+│       ) -> Signature
+├── layout  Locate Python modules on disk without importing them.
+│   ├── is_package(directory: Path) -> bool
+│   ├── modules(directory: Path) -> dict[str, Path]
+│   └── project_packages(project: Path) -> dict[str, Path]
+├── runtime  Inspect editable-installed packages by importing them.
+│   ├── editable_packages(project: Path) -> list[str]
+│   ├── import_module(name: str) -> ModuleType
+│   └── runtime_trees(
+│           root: Path,
+│           *,
 │           scope: Optional[str] = ...,
-│           *,
-│           on_error: ErrorHandler = ...,
-│       ) -> dict[str, list[str]]
-├── display
-│   ├── print_tree(pkg_name: str, tree: Tree, cfg: Config) -> None
-│   └── render_tree(tree: Tree, prefix: str = ...) -> list[str]
-├── introspection
-│   ├── format_inspected_signature(
-│   │       sig: inspect.Signature,
-│   │       *,
+│           exclude: Exclusion = ...,
+│           show_defaults: bool = ...,
+│       ) -> dict[str, Tree]
+├── signature  Call signatures, independent of how they were inspected.
+│   ├── Parameter(
 │   │       name: str,
-│   │       show_defaults: bool,
-│   │       max_width: Optional[int],
-│   │   ) -> str
-│   ├── format_signature(
-│   │       obj: Union[Callable, type],
-│   │       show_defaults: bool,
-│   │       *,
-│   │       max_width: Optional[int] = ...,
-│   │       name: Optional[str] = ...,
-│   │   ) -> str
-│   ├── get_module_docstring(modname: str, short: bool = ...) -> Optional[str]
-│   ├── get_module_items(
-│   │       modname: str,
-│   │       exclude: Optional[str],
-│   │       show_defaults: bool,
-│   │       *,
-│   │       max_width: Optional[int] = ...,
-│   │       on_error: ErrorHandler = ...,
-│   │   ) -> list[str]
-│   ├── import_module(modname: str) -> ModuleType
-│   └── safe_import(
-│           modname: str,
-│           *,
-│           on_error: ErrorHandler = ...,
-│       ) -> Optional[ModuleType]
-├── source
+│   │       kind: Kind,
+│   │       annotation: Optional[str] = ...,
+│   │       default: Optional[str] = ...,
+│   │   )
+│   └── Signature(
+│           name: str,
+│           parameters: Optional[tuple[Parameter, ...]],
+│           returns: Optional[str] = ...,
+│       )
+├── source  Read local Python source with Griffe, without importing it.
 │   ├── source_packages(root: Path) -> dict[str, Path]
 │   └── source_trees(
-│           *,
 │           root: Path,
-│           scope: Optional[str],
-│           exclude: Optional[str],
-│           show_defaults: bool,
-│           max_width: Optional[int],
-│           on_error: ErrorHandler,
+│           *,
+│           scope: Optional[str] = ...,
+│           exclude: Exclusion = ...,
+│           show_defaults: bool = ...,
 │       ) -> dict[str, Tree]
-└── tree
-    ├── Tree(
-    │       items: list[str] = ...,
-    │       children: dict[str, Tree] = ...,
-    │       docstring: Optional[str] = ...,
-    │       failed: bool = ...,
-    │   )
-    ├── build_tree(
-    │       submods: list[str],
-    │       pkg_name: str,
-    │       exclude: Optional[str],
-    │       show_defaults: bool,
-    │       *,
-    │       max_width: Optional[int] = ...,
-    │       on_error: ErrorHandler = ...,
-    │   ) -> Tree
-    └── get_subtree(tree: Tree, path: list[str]) -> Optional[Tree]
+└── tree  Inspection results shared by the source and runtime backends.
+    └── Tree(
+            items: list[Signature] = ...,
+            children: dict[str, Tree] = ...,
+            docstring: Optional[str] = ...,
+            error: Optional[str] = ...,
+        )
 ```
 
 Flat output for the introspection module:
 ```
-pypatree.introspection
-pypatree.introspection.format_inspected_signature(sig: inspect.Signature, *, name: str, show_defaults: bool, max_width: Optional[int]) -> str
-pypatree.introspection.format_signature(obj: Union[Callable, type], show_defaults: bool, *, max_width: Optional[int] = ..., name: Optional[str] = ...) -> str
-pypatree.introspection.get_module_docstring(modname: str, short: bool = ...) -> Optional[str]
-pypatree.introspection.get_module_items(modname: str, exclude: Optional[str], show_defaults: bool, *, max_width: Optional[int] = ..., on_error: ErrorHandler = ...) -> list[str]
-pypatree.introspection.import_module(modname: str) -> ModuleType
-pypatree.introspection.safe_import(modname: str, *, on_error: ErrorHandler = ...) -> Optional[ModuleType]
+pypatree.introspection  Signatures of live functions and classes.
+pypatree.introspection.module_items(module: ModuleType, *, exclude: Exclusion, show_defaults: bool) -> list[Signature]
+pypatree.introspection.signature_of(obj: Union[Callable[..., object], type], *, name: Optional[str] = ..., show_defaults: bool) -> Signature
 ```
 
 Run `pypatree --help` for options:
@@ -155,31 +148,32 @@ usage: pypatree [-h] [OPTIONS] [MODULE]
 Display module tree with public functions/classes.
 
 ╭─ positional arguments ─────────────────────────────────────────────────────╮
-│ [MODULE]                Module path to scope to (e.g., 'mypkg.submodule'). │
-│                         (default: None)                                    │
+│ [MODULE]                                                                   │
+│     Dotted module to inspect, such as 'mypkg.parsers'. (default: None)     │
 ╰────────────────────────────────────────────────────────────────────────────╯
 ╭─ options ──────────────────────────────────────────────────────────────────╮
-│ -h, --help              show this help message and exit                    │
-│ --exclude {None}|STR    Regex to exclude module segments and item names    │
-│                         (default: tests). Use '' for none. (default:       │
-│                         '^tests?$|^test_')                                 │
+│ -h, --help                                                                 │
+│     show this help message and exit                                        │
+│ --exclude STR                                                              │
+│     Regex excluding matching module segments and item names. '' disables   │
+│     it. (default: '^tests?$|^test_')                                       │
 │ --docstrings {none,short,full}                                             │
-│                         Show module docstrings: none, short (first line),  │
-│                         or full. (default: short)                          │
+│     Module docstrings to show: none, the first line, or all of it.         │
+│     (default: short)                                                       │
 │ --show-defaults, --no-show-defaults                                        │
-│                         Show default values in signatures. Otherwise, =    │
-│                         ... marks optional parameters. (default: False)    │
-│ --flat, --no-flat       Print fully qualified names, one item per line,    │
-│                         without tree guides or wrapping. (default: False)  │
+│     Show default values in signatures. Otherwise, = ... marks optional     │
+│     parameters. (default: False)                                           │
+│ --flat, --no-flat                                                          │
+│     Print fully qualified names, one item per line, without tree guides or │
+│     wrapping. (default: False)                                             │
 │ --color {auto,always,never}                                                │
-│                         Color policy for either output format. Auto        │
-│                         detects the terminal. (default: auto)              │
+│     Color policy for either output format. Auto detects the terminal.      │
+│     (default: auto)                                                        │
 │ --verbose, --no-verbose                                                    │
-│                         Enable debug logging to stderr. (default: False)   │
+│     Log discovery details and tracebacks to stderr. (default: False)       │
 │ --runtime, --no-runtime                                                    │
-│                         Import editable-installed code in this             │
-│                         environment. Default: read local source. (default: │
-│                         False)                                             │
+│     Import editable-installed code in this environment. Default: read      │
+│     local source. (default: False)                                         │
 ╰────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -705,11 +699,13 @@ httpx
     └── unquote(value: str) -> str
 ```
 
-Python API: `build_tree()` performs runtime inspection and returns a `Tree` dataclass with `items`, `children`,
-`docstring`, and `failed` fields. In 0.5, this replaces the dictionary containing
-the reserved `__items__` key. Read `tree.items` and `tree.children[name]` when
-updating callers from 0.4.
+Python API: `source_trees(root)` and `runtime_trees(root)` accept the CLI's
+`scope`, `exclude` (an `Exclusion`), and `show_defaults` options and return a
+`Tree` for each inspected package. A `Tree` has `items` (`Signature` objects in
+definition order), `children`, `docstring`, and `error`, which explains why a
+module could not be fully inspected. `str(signature)` is its one-line form.
+These replace `build_tree()`, `get_packages()`, `get_module_items()`, and
+`format_signature()` from 0.6.
 
 Development commands live in `justfile`. Run `uv run just` for local checks and
-README generation. Refresh the pinned showcase dependencies with
-`uv run python scripts/regen_readme.py --update-constraints`.
+README generation. README examples run with the locked dependencies in `uv.lock`.

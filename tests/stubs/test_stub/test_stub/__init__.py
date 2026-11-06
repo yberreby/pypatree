@@ -1,1 +1,1 @@
-"""Stub package named 'test_stub' to test skip_tests filtering."""
+"""Fixture package whose name the default --exclude matches."""
