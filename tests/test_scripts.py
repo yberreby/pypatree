@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts.lib import PYTHON_VERSION, run, run_pypatree_on_repo
+from scripts.lib import pypatree_on_repo, run
 
 
 def test_run_reports_subprocess_failure(tmp_path: Path) -> None:
@@ -37,6 +37,7 @@ def test_run_failure_preserves_stdout() -> None:
 def test_showcase_uses_requested_revision_and_project_python(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    # The showcase must select its interpreter explicitly.
     monkeypatch.setenv("UV_PYTHON", str(tmp_path / "missing-interpreter"))
     caller = tmp_path / "caller"
     run("git", "init", "-q", str(caller))
@@ -44,20 +45,15 @@ def test_showcase_uses_requested_revision_and_project_python(
     run("git", "-C", str(caller), "config", "user.email", "caller@example.invalid")
     run("git", "-C", str(caller), "commit", "--allow-empty", "-qm", "caller")
     caller_revision = run("git", "-C", str(caller), "rev-parse", "HEAD").stdout
+    # Git hooks export these; they must not redirect the showcase checkout.
     monkeypatch.setenv("GIT_DIR", str(caller / ".git"))
     monkeypatch.setenv("GIT_WORK_TREE", str(caller))
     monkeypatch.setenv("GIT_INDEX_FILE", str(caller / ".git/index"))
     source = tmp_path / "example"
     package = source / "example"
     package.mkdir(parents=True)
-    (source / "pyproject.toml").write_text(
-        '[build-system]\nrequires = ["hatchling"]\nbuild-backend = "hatchling.build"\n'
-        '\n[project]\nname = "example"\nversion = "0.1.0"\nrequires-python = ">=3.9"\n'
-    )
-    (package / "__init__.py").write_text(
-        "import platform\n__doc__ = 'Python ' + platform.python_version()\n"
-        "def first_marker() -> None:\n    pass\n"
-    )
+    (source / "pyproject.toml").write_text('[project]\nname = "example"\n')
+    (package / "__init__.py").write_text("def first_marker() -> None:\n    pass\n")
     run("git", "init", "-q", str(source))
     run("git", "-C", str(source), "config", "user.name", "pypatree test")
     run("git", "-C", str(source), "config", "user.email", "test@example.invalid")
@@ -70,11 +66,10 @@ def test_showcase_uses_requested_revision_and_project_python(
     run("git", "-C", str(source), "add", "example/__init__.py")
     run("git", "-C", str(source), "commit", "-qm", "second")
 
-    output = run_pypatree_on_repo(str(source), revision=revision, runtime=True)
+    output = pypatree_on_repo(str(source), revision=revision)
 
     assert "first_marker" in output
     assert "second_marker" not in output
-    assert f"Python {PYTHON_VERSION}" in output
     assert run("git", "-C", str(caller), "rev-parse", "HEAD").stdout == caller_revision
     assert (
         run("git", "-C", str(caller), "config", "user.name").stdout.strip()
