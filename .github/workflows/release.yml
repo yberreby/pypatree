@@ -25,4 +25,5 @@ jobs:
       - name: Check release tag
         run: test "$GITHUB_REF_NAME" = "v$(uv version --short)"
       - run: uv run just package-check
-      - run: uv publish
+      # Rerunning a release skips identical files; changed files still fail.
+      - run: uv publish --check-url https://pypi.org/simple/
